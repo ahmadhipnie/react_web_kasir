@@ -61,7 +61,7 @@ const MainLayout = () => {
           <div className="sidebar-logo">🍔</div>
           <div className="sidebar-brand">
             <h1>FoodPOS</h1>
-            <span>Sistem Kasir Modern</span>
+            <span>Sistem Kasir Makanan</span>
           </div>
         </div>
 

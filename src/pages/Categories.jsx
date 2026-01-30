@@ -10,12 +10,8 @@ import toast from 'react-hot-toast';
 import { categoryService, foodService } from '../services/api';
 import { Modal, ConfirmDialog, LoadingSpinner, EmptyState } from '../components/common';
 
-// Icon options for categories
-const ICON_OPTIONS = [
-  '🍔', '🍕', '🍜', '🍝', '🍣', '🍱', '🍛', '🥗', 
-  '🥤', '☕', '🍵', '🧃', '🍦', '🍰', '🧁', '🍩',
-  '🍪', '🥐', '🥪', '🌮', '🌯', '🥡', '🍿', '🥨'
-];
+// Icon options removed - categories will use default icon
+const DEFAULT_CATEGORY_ICON = '🍔';
 
 const Categories = () => {
   const [categories, setCategories] = useState([]);
@@ -31,9 +27,7 @@ const Categories = () => {
   // Form state
   const [formData, setFormData] = useState({
     nama_kategori: '',
-    deskripsi: '',
-    icon: '🍔',
-    status: 'aktif'
+    deskripsi: ''
   });
 
   useEffect(() => {
@@ -66,7 +60,7 @@ const Categories = () => {
   };
 
   const filteredCategories = categories.filter(cat =>
-    cat.nama_kategori.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (cat.nama || cat.nama_kategori || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     cat.deskripsi?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -74,9 +68,7 @@ const Categories = () => {
     setSelectedCategory(null);
     setFormData({
       nama_kategori: '',
-      deskripsi: '',
-      icon: '🍔',
-      status: 'aktif'
+      deskripsi: ''
     });
     setIsModalOpen(true);
   };
@@ -85,9 +77,7 @@ const Categories = () => {
     setSelectedCategory(category);
     setFormData({
       nama_kategori: category.nama_kategori || '',
-      deskripsi: category.deskripsi || '',
-      icon: category.icon || '🍔',
-      status: category.status || 'aktif'
+      deskripsi: category.deskripsi || ''
     });
     setIsModalOpen(true);
   };
@@ -186,7 +176,7 @@ const Categories = () => {
           {filteredCategories.map((category) => (
             <div key={category.id} className="category-card">
               <div className="category-icon">
-                {category.icon || '🍔'}
+                {DEFAULT_CATEGORY_ICON}
               </div>
               
               <div className="category-info">
@@ -262,53 +252,7 @@ const Categories = () => {
             />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Icon</label>
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(8, 1fr)', 
-              gap: '0.5rem',
-              padding: '1rem',
-              background: 'var(--gray-50)',
-              borderRadius: 'var(--radius-md)'
-            }}>
-              {ICON_OPTIONS.map((icon) => (
-                <button
-                  key={icon}
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, icon }))}
-                  style={{
-                    width: '40px',
-                    height: '40px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '1.25rem',
-                    border: formData.icon === icon ? '2px solid var(--primary-500)' : '2px solid transparent',
-                    borderRadius: 'var(--radius-md)',
-                    background: formData.icon === icon ? 'var(--primary-50)' : 'white',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  {icon}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Status</label>
-            <select
-              className="form-select"
-              name="status"
-              value={formData.status}
-              onChange={handleInputChange}
-            >
-              <option value="aktif">Aktif</option>
-              <option value="nonaktif">Nonaktif</option>
-            </select>
-          </div>
+          {/* Status and Icon removed */}
 
           <div className="modal-footer" style={{ padding: '1.25rem 0 0', borderTop: '1px solid var(--gray-100)', marginTop: '1rem' }}>
             <button 

@@ -16,6 +16,8 @@ import History from './pages/History';
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
 
+  console.log('🔒 ProtectedRoute check:', { user, loading });
+
   if (loading) {
     return (
       <div className="loading-screen">
@@ -26,9 +28,11 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!user) {
+    console.log('❌ No user, redirecting to /login');
     return <Navigate to="/login" replace />;
   }
 
+  console.log('✅ User authenticated, rendering protected content');
   return children;
 };
 
