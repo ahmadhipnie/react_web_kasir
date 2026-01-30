@@ -6,5 +6,6 @@ const authMiddleware = require('../middlewares/auth.middleware');
 router.use(authMiddleware);
 
 router.get('/summary', dashboardController.getSummary);
+router.get('/top-foods', dashboardController.getTopFoods);
 
 module.exports = router;

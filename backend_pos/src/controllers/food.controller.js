@@ -4,9 +4,11 @@ const fs = require('fs');
 
 exports.getAll = async (req, res) => {
   try {
-    const { category_id, search } = req.query;
+    const { category_id, search, status } = req.query;
     let query = `
-      SELECT f.*, c.nama as category_nama 
+      SELECT f.id, f.kode_makanan, f.nama_makanan, f.nama_makanan as nama, f.category_id, f.deskripsi, 
+             f.harga, f.stok, f.gambar, f.status, f.created_at, f.updated_at,
+             c.nama_kategori as category_nama 
       FROM foods f 
       LEFT JOIN categories c ON f.category_id = c.id 
       WHERE 1=1
@@ -19,11 +21,16 @@ exports.getAll = async (req, res) => {
     }
 
     if (search) {
-      query += ' AND f.nama LIKE ?';
+      query += ' AND f.nama_makanan LIKE ?';
       params.push(`%${search}%`);
     }
 
-    query += ' ORDER BY f.nama ASC';
+    if (status) {
+      query += ' AND f.status = ?';
+      params.push(status);
+    }
+
+    query += ' ORDER BY f.nama_makanan ASC';
 
     const [foods] = await db.execute(query, params);
 
@@ -45,7 +52,9 @@ exports.getById = async (req, res) => {
     const { id } = req.params;
 
     const [foods] = await db.execute(
-      `SELECT f.*, c.nama as category_nama 
+      `SELECT f.id, f.kode_makanan, f.nama_makanan, f.nama_makanan as nama, f.category_id, f.deskripsi, 
+              f.harga, f.stok, f.gambar, f.status, f.created_at, f.updated_at,
+              c.nama_kategori as category_nama 
        FROM foods f 
        LEFT JOIN categories c ON f.category_id = c.id 
        WHERE f.id = ?`,
@@ -74,27 +83,99 @@ exports.getById = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { nama, category_id, harga, stok, deskripsi } = req.body;
+    const { nama_makanan, nama, category_id, harga, stok, deskripsi } = req.body;
     const gambar = req.file ? req.file.filename : null;
 
-    if (!nama || !category_id || !harga) {
+    // Accept both nama_makanan and nama for compatibility
+    const foodName = nama_makanan || nama;
+
+    // Status handling with validation
+    const allowedStatuses = ['tersedia', 'habis', 'nonaktif'];
+    const status = allowedStatuses.includes(req.body.status) ? req.body.status : 'tersedia';
+
+    if (!foodName || !category_id || !harga) {
       return res.status(400).json({
         success: false,
         message: 'Nama, kategori, dan harga harus diisi'
       });
     }
 
-    const [result] = await db.execute(
-      'INSERT INTO foods (nama, category_id, harga, stok, deskripsi, gambar) VALUES (?, ?, ?, ?, ?, ?)',
-      [nama, category_id, harga, stok || 0, deskripsi || null, gambar]
-    );
+    // Generate kode_makanan (support provided kode_makanan and avoid duplicates)
+    const providedCode = req.body.kode_makanan;
+    let newCode;
+
+    if (providedCode) {
+      // validate uniqueness of provided code
+      const [exists] = await db.execute('SELECT id FROM foods WHERE kode_makanan = ?', [providedCode]);
+      if (exists.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Kode makanan sudah ada'
+        });
+      }
+      newCode = providedCode;
+    } else {
+      // find max numeric suffix and increment
+      const [rowsMax] = await db.execute("SELECT MAX(CAST(SUBSTRING(kode_makanan,4) AS UNSIGNED)) as maxnum FROM foods");
+      let nextNum = (rowsMax[0].maxnum || 0) + 1;
+      newCode = 'MKN' + nextNum.toString().padStart(3, '0');
+
+      // ensure not colliding (race-safe best-effort)
+      let attempts = 0;
+      while (attempts < 5) {
+        const [check] = await db.execute('SELECT id FROM foods WHERE kode_makanan = ?', [newCode]);
+        if (check.length === 0) break;
+        nextNum += 1;
+        newCode = 'MKN' + nextNum.toString().padStart(3, '0');
+        attempts += 1;
+      }
+
+      if (attempts === 5) {
+        return res.status(500).json({
+          success: false,
+          message: 'Gagal menghasilkan kode makanan unik. Coba lagi.'
+        });
+      }
+    }
+
+    // Try inserting, retrying on duplicate kode_makanan (handles rare race conditions)
+    let insertResult;
+    let insertAttempts = 0;
+    while (insertAttempts < 5) {
+      try {
+        const [result] = await db.execute(
+          'INSERT INTO foods (kode_makanan, nama_makanan, category_id, harga, stok, deskripsi, gambar, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [newCode, foodName, category_id, harga, stok || 0, deskripsi || null, gambar, status]
+        );
+        insertResult = result;
+        break;
+      } catch (err) {
+        if (err && err.code === 'ER_DUP_ENTRY' && err.sqlMessage && err.sqlMessage.includes('kode_makanan')) {
+          // increment code and retry
+          const num = parseInt(newCode.substring(3)) + 1;
+          newCode = 'MKN' + num.toString().padStart(3, '0');
+          insertAttempts += 1;
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    if (!insertResult) {
+      return res.status(500).json({
+        success: false,
+        message: 'Gagal menambahkan makanan karena konflik kode. Coba lagi.'
+      });
+    }
 
     const [newFood] = await db.execute(
-      `SELECT f.*, c.nama as category_nama 
+      `SELECT f.id, f.kode_makanan, f.nama_makanan, f.nama_makanan as nama, f.category_id, f.deskripsi, 
+              f.harga, f.stok, f.gambar, f.status, f.created_at, f.updated_at,
+              c.nama_kategori as category_nama 
        FROM foods f 
        LEFT JOIN categories c ON f.category_id = c.id 
        WHERE f.id = ?`,
-      [result.insertId]
+      [insertResult.insertId]
     );
 
     res.status(201).json({
@@ -114,7 +195,14 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nama, category_id, harga, stok, deskripsi } = req.body;
+    const { nama_makanan, nama, category_id, harga, stok, deskripsi } = req.body;
+
+    // Accept both nama_makanan and nama for compatibility
+    const foodName = nama_makanan || nama;
+
+    // Status handling with validation
+    const allowedStatuses = ['tersedia', 'habis', 'nonaktif'];
+    const status = allowedStatuses.includes(req.body.status) ? req.body.status : 'tersedia';
 
     const [existing] = await db.execute(
       'SELECT * FROM foods WHERE id = ?',
@@ -142,12 +230,14 @@ exports.update = async (req, res) => {
     }
 
     await db.execute(
-      'UPDATE foods SET nama = ?, category_id = ?, harga = ?, stok = ?, deskripsi = ?, gambar = ? WHERE id = ?',
-      [nama, category_id, harga, stok || 0, deskripsi || null, gambar, id]
+      'UPDATE foods SET nama_makanan = ?, category_id = ?, harga = ?, stok = ?, deskripsi = ?, gambar = ?, status = ? WHERE id = ?',
+      [foodName, category_id, harga, stok || 0, deskripsi || null, gambar, status, id]
     );
 
     const [updated] = await db.execute(
-      `SELECT f.*, c.nama as category_nama 
+      `SELECT f.id, f.kode_makanan, f.nama_makanan, f.nama_makanan as nama, f.category_id, f.deskripsi, 
+              f.harga, f.stok, f.gambar, f.status, f.created_at, f.updated_at,
+              c.nama_kategori as category_nama 
        FROM foods f 
        LEFT JOIN categories c ON f.category_id = c.id 
        WHERE f.id = ?`,

@@ -193,7 +193,7 @@ const History = () => {
           />
         </div>
 
-        <select 
+        {/* <select 
           className="form-select" 
           style={{ width: 'auto' }}
           value={statusFilter}
@@ -205,7 +205,7 @@ const History = () => {
           <option value="all">Semua Status</option>
           <option value="selesai">Selesai</option>
           <option value="dibatalkan">Dibatalkan</option>
-        </select>
+        </select> */}
 
         <button className="btn btn-success" onClick={exportToExcel}>
           <HiOutlineDownload />
@@ -324,9 +324,9 @@ const History = () => {
                 selectedTransaction.details.map((item, index) => (
                   <div key={index} className="transaction-item">
                     <div className="transaction-item-left">
-                      <span className="transaction-item-name">{item.nama_makanan}</span>
+                      <span className="transaction-item-name">{item.nama_makanan || item.food_nama}</span>
                       <span className="transaction-item-qty">
-                        {item.jumlah} x {formatCurrency(item.harga_satuan)}
+                        {item.jumlah} x {formatCurrency(item.harga_satuan || item.harga)}
                       </span>
                     </div>
                     <span className="transaction-item-price">
@@ -354,7 +354,7 @@ const History = () => {
               )}
               <div className="transaction-total-row">
                 <span>Pajak</span>
-                <span>{formatCurrency(selectedTransaction.pajak)}</span>
+                <span>{formatCurrency(selectedTransaction.pajak && selectedTransaction.pajak > 0 ? selectedTransaction.pajak : Math.round((selectedTransaction.subtotal || 0) * 0.1))}</span>
               </div>
               <div className="transaction-total-row grand-total">
                 <span>Total Bayar</span>

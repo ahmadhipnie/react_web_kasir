@@ -98,7 +98,8 @@ export const foodService = {
         'Content-Type': 'multipart/form-data',
       },
     };
-    const response = await api.post(`/foods/${id}?_method=PUT`, data, config);
+    // Use HTTP PUT to match backend route and support multipart/form-data
+    const response = await api.put(`/foods/${id}`, data, config);
     return response.data;
   },
   delete: async (id) => {
@@ -122,7 +123,7 @@ export const transactionService = {
     return response.data;
   },
   getHistory: async (params = {}) => {
-    const response = await api.get('/history/transactions', { params });
+    const response = await api.get('/transactions/history', { params });
     return response.data;
   },
 };

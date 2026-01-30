@@ -16,7 +16,7 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from 'recharts';
-import { dashboardService, transactionService } from '../services/api';
+import { dashboardService, transactionService, foodService } from '../services/api';
 import { formatCurrency, formatNumber } from '../utils';
 import { LoadingSpinner } from '../components/common';
 
@@ -47,35 +47,96 @@ const Dashboard = () => {
         transactionService.getHistory({ limit: 5 })
       ]);
 
+      // summaryRes may be either { success, data: { summary: {...}, ... } }
+      // or older { success, data: {...summary fields...} }
       if (summaryRes.success) {
-        setSummary(summaryRes.data);
+        const data = summaryRes.data || {};
+        const resolvedSummary = data.summary || data;
+        setSummary(resolvedSummary || {});
+
+        // monthly_sales may be nested under data.monthly_sales or not present
+        if (data.monthly_sales && Array.isArray(data.monthly_sales) && data.monthly_sales.length > 0) {
+          const chart = data.monthly_sales.map(m => ({ name: m.month_name, pendapatan: Number(m.total_pendapatan || 0), transaksi: Number(m.total_transaksi || 0) }));
+          setChartData(chart);
+        } else {
+          // fallback: aggregate recent transactions for last 7 days
+          try {
+            const today = new Date();
+            const start = new Date();
+            start.setDate(today.getDate() - 6);
+            const toISO = d => d.toISOString().split('T')[0];
+            const trxRes = await transactionService.getAll({ start_date: toISO(start), end_date: toISO(today) });
+            
+            if (trxRes && trxRes.success) {
+              const trxList = trxRes.data?.data || trxRes.data || [];
+              console.log('📊 Fallback grafik - transaksi 7 hari:', trxList.length);
+              
+              const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+              const dayMap = {};
+              
+              // Initialize 7 days
+              for (let i = 0; i < 7; i++) {
+                const d = new Date(start);
+                d.setDate(start.getDate() + i);
+                const dateKey = toISO(d);
+                dayMap[dateKey] = { name: dayNames[d.getDay()], pendapatan: 0, transaksi: 0 };
+              }
+              
+              // Aggregate transactions by date
+              trxList.forEach(t => {
+                const date = (new Date(t.tanggal_transaksi)).toISOString().split('T')[0];
+                if (dayMap[date]) {
+                  dayMap[date].pendapatan += Number(t.total_bayar || 0);
+                  dayMap[date].transaksi += 1;
+                }
+              });
+              
+              const chart = Object.values(dayMap);
+              console.log('📊 Data grafik fallback:', chart);
+              setChartData(chart);
+            } else {
+              console.log('⚠️ Gagal fetch transaksi untuk grafik');
+              setChartData([]);
+            }
+          } catch (err) {
+            console.error('❌ Error fallback grafik:', err);
+            setChartData([]);
+          }
+        }
+
+      // If total_makanan not provided, fetch count from foods
+      if (!resolvedSummary.total_makanan || resolvedSummary.total_makanan === 0) {
+        try {
+          const foodsRes = await foodService.getAll();
+          if (foodsRes && foodsRes.success) {
+            const foodsList = foodsRes.data || foodsRes.data?.data || [];
+            setSummary(prev => ({ ...prev, total_makanan: foodsList.length }));
+          }
+        } catch (err) {
+          // ignore
+        }
+      }
       }
 
-      if (topFoodsRes.success) {
-        setTopFoods(topFoodsRes.data || []);
+      // top foods
+      if (topFoodsRes && topFoodsRes.success) {
+        // topFoodsRes may return data directly or nested
+        setTopFoods(topFoodsRes.data || topFoodsRes.data?.data || []);
       }
 
-      if (transactionsRes.success) {
+      // recent transactions - try to get from summary response first (new API), otherwise fallback to transactionsRes
+      if (summaryRes.success && summaryRes.data && summaryRes.data.recent_transactions) {
+        setRecentTransactions(summaryRes.data.recent_transactions || []);
+      } else if (transactionsRes && transactionsRes.success) {
         setRecentTransactions(transactionsRes.data?.data || transactionsRes.data || []);
       }
 
-      // Generate mock chart data (replace with real API data later)
-      generateChartData();
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      setChartData([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  const generateChartData = () => {
-    const days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-    const data = days.map((day) => ({
-      name: day,
-      pendapatan: Math.floor(Math.random() * 2000000) + 500000,
-      transaksi: Math.floor(Math.random() * 50) + 10,
-    }));
-    setChartData(data);
   };
 
   const stats = [
@@ -84,31 +145,27 @@ const Dashboard = () => {
       value: formatCurrency(summary.total_pendapatan_hari_ini || 0),
       icon: HiOutlineCurrencyDollar,
       iconClass: 'primary',
-      change: '+12.5%',
-      changeType: 'positive'
+      changeType: 'neutral'
     },
     {
       title: 'Total Transaksi',
       value: formatNumber(summary.total_transaksi_hari_ini || 0),
       icon: HiOutlineShoppingCart,
       iconClass: 'success',
-      change: '+8.2%',
-      changeType: 'positive'
+      changeType: 'neutral'
     },
     {
       title: 'Item Terjual',
       value: formatNumber(summary.total_item_terjual_hari_ini || 0),
       icon: HiOutlineClipboardList,
       iconClass: 'warning',
-      change: '+15.3%',
-      changeType: 'positive'
+      changeType: 'neutral'
     },
     {
       title: 'Total Menu',
       value: formatNumber(summary.total_makanan || 0),
       icon: IoFastFoodOutline,
       iconClass: 'info',
-      change: '0%',
       changeType: 'neutral'
     },
   ];
@@ -139,7 +196,6 @@ const Dashboard = () => {
               <div className={`change ${stat.changeType}`}>
                 {stat.changeType === 'positive' ? <HiOutlineTrendingUp /> : 
                  stat.changeType === 'negative' ? <HiOutlineTrendingDown /> : null}
-                <span>{stat.change} dari kemarin</span>
               </div>
             </div>
           </div>

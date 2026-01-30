@@ -48,7 +48,7 @@ exports.login = async (req, res) => {
         user: {
           id: user.id,
           username: user.username,
-          nama: user.nama,
+          nama: user.nama_lengkap,
           role: user.role
         },
         token
@@ -66,7 +66,7 @@ exports.login = async (req, res) => {
 exports.me = async (req, res) => {
   try {
     const [users] = await db.execute(
-      'SELECT id, username, nama, role FROM users WHERE id = ?',
+      'SELECT id, username, nama_lengkap as nama, role FROM users WHERE id = ?',
       [req.user.id]
     );
 

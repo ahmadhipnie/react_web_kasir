@@ -10,22 +10,30 @@ async function seed() {
       ['admin']
     );
 
-    if (existingUsers.length > 0) {
-      console.log('Admin user already exists!');
-      process.exit(0);
-    }
-
-    // Create admin user
+    // Create admin user with Node.js bcrypt hash
     const hashedPassword = await bcrypt.hash('admin123', 10);
 
-    await db.execute(
-      'INSERT INTO users (username, password, nama, role) VALUES (?, ?, ?, ?)',
-      ['admin', hashedPassword, 'Administrator', 'admin']
-    );
+    if (existingUsers.length > 0) {
+      console.log('Admin user already exists. Updating password...');
+      await db.execute(
+        'UPDATE users SET password = ? WHERE username = ?',
+        [hashedPassword, 'admin']
+      );
+      console.log('✅ Admin password updated successfully!');
+    } else {
+      console.log('Creating new admin user...');
+      await db.execute(
+        'INSERT INTO users (username, password, nama_lengkap, role) VALUES (?, ?, ?, ?)',
+        ['admin', hashedPassword, 'Administrator', 'admin']
+      );
+      console.log('✅ Admin user created successfully!');
+    }
 
-    console.log('Admin user created successfully!');
-    console.log('Username: admin');
-    console.log('Password: admin123');
+    console.log('');
+    console.log('📝 Login credentials:');
+    console.log('   Username: admin');
+    console.log('   Password: admin123');
+    console.log('');
     process.exit(0);
   } catch (error) {
     console.error('Seed error:', error);

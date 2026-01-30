@@ -1,14 +1,19 @@
 const db = require('../config/database');
 
+const DEFAULT_CATEGORY_ICON = '🍔';
+
 exports.getAll = async (req, res) => {
   try {
     const [categories] = await db.execute(
-      'SELECT * FROM categories ORDER BY nama ASC'
+      'SELECT id, nama_kategori, nama_kategori as nama, deskripsi, created_at, updated_at FROM categories ORDER BY nama_kategori ASC'
     );
+
+    // Add default icon to each category for compatibility
+    const result = categories.map(c => ({ ...c, icon: DEFAULT_CATEGORY_ICON }));
 
     res.json({
       success: true,
-      data: categories
+      data: result
     });
   } catch (error) {
     console.error('Get categories error:', error);
@@ -24,7 +29,7 @@ exports.getById = async (req, res) => {
     const { id } = req.params;
 
     const [categories] = await db.execute(
-      'SELECT * FROM categories WHERE id = ?',
+      'SELECT id, nama_kategori, nama_kategori as nama, deskripsi, created_at, updated_at FROM categories WHERE id = ?',
       [id]
     );
 
@@ -35,9 +40,11 @@ exports.getById = async (req, res) => {
       });
     }
 
+    const category = { ...categories[0], icon: DEFAULT_CATEGORY_ICON };
+
     res.json({
       success: true,
-      data: categories[0]
+      data: category
     });
   } catch (error) {
     console.error('Get category error:', error);
@@ -50,9 +57,12 @@ exports.getById = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { nama, deskripsi } = req.body;
+    const { nama_kategori, nama, deskripsi } = req.body;
 
-    if (!nama) {
+    // Accept both nama_kategori and nama for compatibility
+    const categoryName = nama_kategori || nama;
+
+    if (!categoryName) {
       return res.status(400).json({
         success: false,
         message: 'Nama kategori harus diisi'
@@ -60,19 +70,19 @@ exports.create = async (req, res) => {
     }
 
     const [result] = await db.execute(
-      'INSERT INTO categories (nama, deskripsi) VALUES (?, ?)',
-      [nama, deskripsi || null]
+      'INSERT INTO categories (nama_kategori, deskripsi) VALUES (?, ?)',
+      [categoryName, deskripsi || null]
     );
 
     const [newCategory] = await db.execute(
-      'SELECT * FROM categories WHERE id = ?',
+      'SELECT id, nama_kategori, nama_kategori as nama, deskripsi, created_at, updated_at FROM categories WHERE id = ?',
       [result.insertId]
     );
 
     res.status(201).json({
       success: true,
       message: 'Kategori berhasil ditambahkan',
-      data: newCategory[0]
+      data: { ...newCategory[0], icon: DEFAULT_CATEGORY_ICON }
     });
   } catch (error) {
     console.error('Create category error:', error);
@@ -86,9 +96,12 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nama, deskripsi } = req.body;
+    const { nama_kategori, nama, deskripsi } = req.body;
 
-    if (!nama) {
+    // Accept both nama_kategori and nama for compatibility
+    const categoryName = nama_kategori || nama;
+
+    if (!categoryName) {
       return res.status(400).json({
         success: false,
         message: 'Nama kategori harus diisi'
@@ -108,19 +121,19 @@ exports.update = async (req, res) => {
     }
 
     await db.execute(
-      'UPDATE categories SET nama = ?, deskripsi = ? WHERE id = ?',
-      [nama, deskripsi || null, id]
+      'UPDATE categories SET nama_kategori = ?, deskripsi = ? WHERE id = ?',
+      [categoryName, deskripsi || null, id]
     );
 
     const [updated] = await db.execute(
-      'SELECT * FROM categories WHERE id = ?',
+      'SELECT id, nama_kategori, nama_kategori as nama, deskripsi, created_at, updated_at FROM categories WHERE id = ?',
       [id]
     );
 
     res.json({
       success: true,
       message: 'Kategori berhasil diupdate',
-      data: updated[0]
+      data: { ...updated[0], icon: DEFAULT_CATEGORY_ICON }
     });
   } catch (error) {
     console.error('Update category error:', error);
