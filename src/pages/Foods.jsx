@@ -6,7 +6,7 @@ import {
   HiOutlineTrash,
   HiOutlinePhotograph
 } from 'react-icons/hi';
-import { IoFastFoodOutline } from 'react-icons/io5';
+import { IoFastFoodOutline, IoCheckmarkCircleOutline, IoCloseCircleOutline, IoAlertCircleOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import { foodService, categoryService } from '../services/api';
 import { formatCurrency } from '../utils';
@@ -34,14 +34,13 @@ const Foods = () => {
 
   // Form state
   const [formData, setFormData] = useState({
-    kode_makanan: '',
     nama_makanan: '',
     category_id: '',
     deskripsi: '',
     harga: '',
     stok: '',
     gambar: null,
-    status: 'aktif'
+    status: 'tersedia'
   });
   const [previewImage, setPreviewImage] = useState(null);
 
@@ -115,20 +114,44 @@ const Foods = () => {
   const openCreateModal = () => {
     setSelectedFood(null);
     setFormData({
-      kode_makanan: '',
       nama_makanan: '',
       category_id: '',
       deskripsi: '',
       harga: '',
       stok: '',
       gambar: null,
-      status: 'aktif'
+      status: 'tersedia'
     });
     setPreviewImage(null);
     setIsModalOpen(true);
   };
 
-  const openEditModal = (food) => {
+  const openEditModal = async (food) => {
+    try {
+      // Fetch fresh data to ensure we have all fields including kode_makanan
+      const response = await foodService.getById(food.id);
+      if (response && response.success) {
+        const f = response.data;
+        setSelectedFood(f);
+        setFormData({
+          kode_makanan: f.kode_makanan || '',
+          nama_makanan: f.nama_makanan || '',
+          category_id: f.category_id || '',
+          deskripsi: f.deskripsi || '',
+          harga: f.harga || '',
+          stok: f.stok || '',
+          gambar: null,
+          status: f.status || 'tersedia'
+        });
+        setPreviewImage(f.gambar ? `http://localhost:8000/storage/${f.gambar}` : null);
+        setIsModalOpen(true);
+        return;
+      }
+    } catch (err) {
+      console.error('Failed to fetch food details:', err);
+    }
+
+    // Fallback if getById fails
     setSelectedFood(food);
     setFormData({
       kode_makanan: food.kode_makanan || '',
@@ -138,7 +161,7 @@ const Foods = () => {
       harga: food.harga || '',
       stok: food.stok || '',
       gambar: null,
-      status: food.status || 'aktif'
+      status: food.status || 'tersedia'
     });
     setPreviewImage(food.gambar ? `http://localhost:8000/storage/${food.gambar}` : null);
     setIsModalOpen(true);
@@ -193,7 +216,6 @@ const Foods = () => {
       setFormLoading(true);
       
       const submitData = new FormData();
-      submitData.append('kode_makanan', formData.kode_makanan);
       submitData.append('nama_makanan', formData.nama_makanan);
       submitData.append('category_id', formData.category_id);
       submitData.append('deskripsi', formData.deskripsi);
@@ -280,25 +302,11 @@ const Foods = () => {
             ))}
           </select>
 
-          <div className="filter-tabs">
-            <button 
-              className={`filter-tab ${selectedStatus === 'all' ? 'active' : ''}`}
-              onClick={() => handleStatusFilter('all')}
-            >
-              Semua
-            </button>
-            <button 
-              className={`filter-tab ${selectedStatus === 'aktif' ? 'active' : ''}`}
-              onClick={() => handleStatusFilter('aktif')}
-            >
-              Aktif
-            </button>
-            <button 
-              className={`filter-tab ${selectedStatus === 'nonaktif' ? 'active' : ''}`}
-              onClick={() => handleStatusFilter('nonaktif')}
-            >
-              Nonaktif
-            </button>
+          <div className="status-filters">
+            <button className={`filter-tab ${selectedStatus === 'all' ? 'active' : ''}`} onClick={() => handleStatusFilter('all')}>Semua</button>
+            <button className={`filter-tab ${selectedStatus === 'tersedia' ? 'active' : ''}`} onClick={() => handleStatusFilter('tersedia')}>Tersedia</button>
+            <button className={`filter-tab ${selectedStatus === 'habis' ? 'active' : ''}`} onClick={() => handleStatusFilter('habis')}>Habis</button>
+            <button className={`filter-tab ${selectedStatus === 'nonaktif' ? 'active' : ''}`} onClick={() => handleStatusFilter('nonaktif')}>Nonaktif</button>
           </div>
         </div>
 
@@ -331,9 +339,20 @@ const Foods = () => {
                     <IoFastFoodOutline />
                   </div>
                   <div className="food-card-status">
-                    <span className={`badge ${food.status === 'aktif' ? 'badge-success' : 'badge-danger'}`}>
-                      {food.status === 'aktif' ? 'Tersedia' : 'Habis'}
-                    </span>
+                    {(() => {
+                      const map = {
+                        tersedia: { label: 'Tersedia', icon: <IoCheckmarkCircleOutline />, cls: 'badge-success' },
+                        habis: { label: 'Habis', icon: <IoAlertCircleOutline />, cls: 'badge-warning' },
+                        nonaktif: { label: 'Nonaktif', icon: <IoCloseCircleOutline />, cls: 'badge-danger' }
+                      };
+                      const s = map[food.status] || { label: (food.status || ''), icon: null, cls: '' };
+                      return (
+                        <span className={`badge ${s.cls}`}>
+                          {s.icon && <span className="badge-icon">{s.icon}</span>}
+                          <span className="badge-text">{s.label}</span>
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
                 
@@ -409,18 +428,6 @@ const Foods = () => {
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
-              <label className="form-label">Kode Makanan</label>
-              <input
-                type="text"
-                className="form-input"
-                name="kode_makanan"
-                value={formData.kode_makanan}
-                onChange={handleInputChange}
-                placeholder="Masukkan kode makanan"
-              />
-            </div>
-
-            <div className="form-group">
               <label className="form-label">Nama Makanan *</label>
               <input
                 type="text"
@@ -432,6 +439,20 @@ const Foods = () => {
                 required
               />
             </div>
+
+            {selectedFood ? (
+              <div className="form-group">
+                <label className="form-label">Kode Makanan</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  name="kode_makanan"
+                  value={formData.kode_makanan || ''}
+                  readOnly
+                  disabled
+                />
+              </div>
+            ) : null}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -459,7 +480,8 @@ const Foods = () => {
                 value={formData.status}
                 onChange={handleInputChange}
               >
-                <option value="aktif">Aktif</option>
+                <option value="tersedia">Tersedia</option>
+                <option value="habis">Habis</option>
                 <option value="nonaktif">Nonaktif</option>
               </select>
             </div>

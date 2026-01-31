@@ -42,7 +42,7 @@ const Transaction = () => {
     try {
       setLoading(true);
       const [foodsRes, categoriesRes] = await Promise.all([
-        foodService.getAll({ status: 'aktif' }),
+        foodService.getAll({ status: 'tersedia' }),
         categoryService.getAll()
       ]);
 
@@ -189,6 +189,8 @@ const Transaction = () => {
     return category?.nama_kategori || 'Uncategorized';
   };
 
+  const DEFAULT_CATEGORY_ICON = '🍔';
+
   if (loading) {
     return <LoadingSpinner size="lg" message="Memuat menu..." />;
   }
@@ -222,7 +224,7 @@ const Transaction = () => {
                 className={`category-btn ${selectedCategory === cat.id.toString() ? 'active' : ''}`}
                 onClick={() => setSelectedCategory(cat.id.toString())}
               >
-                {cat.icon} {cat.nama_kategori}
+                {DEFAULT_CATEGORY_ICON} {cat.nama_kategori}
               </button>
             ))}
           </div>
