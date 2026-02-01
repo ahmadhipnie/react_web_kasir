@@ -2,8 +2,8 @@ import { HiOutlineInbox } from 'react-icons/hi';
 
 const EmptyState = ({ 
   icon: Icon = HiOutlineInbox, 
-  title = 'Data tidak ditemukan',
-  description = 'Belum ada data yang tersedia',
+  title = 'Data not found',
+  description = 'No data available yet',
   action = null 
 }) => {
   return (

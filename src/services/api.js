@@ -102,9 +102,25 @@ export const foodService = {
     const response = await api.put(`/foods/${id}`, data, config);
     return response.data;
   },
-  delete: async (id) => {
-    const response = await api.delete(`/foods/${id}`);
+  delete: async (id, force = false) => {
+    const response = await api.delete(`/foods/${id}`, {
+      params: { force: force ? 'true' : 'false' }
+    });
     return response.data;
+  },
+  checkDeleteImpact: async (id) => {
+    // Check if food can be deleted (will return warning if has transactions)
+    try {
+      const response = await api.delete(`/foods/${id}`, {
+        params: { force: 'false' }
+      });
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 409 && error.response?.data?.requiresConfirmation) {
+        return error.response.data;
+      }
+      throw error;
+    }
   },
 };
 

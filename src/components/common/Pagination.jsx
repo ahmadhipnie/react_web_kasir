@@ -42,7 +42,7 @@ const Pagination = ({
     }}>
       {showInfo && totalItems > 0 && (
         <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>
-          Menampilkan {startItem} - {endItem} dari {totalItems} data
+          Showing {startItem} - {endItem} of {totalItems} items
         </p>
       )}
       

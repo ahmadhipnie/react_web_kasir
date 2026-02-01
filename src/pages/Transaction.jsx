@@ -25,7 +25,7 @@ const Transaction = () => {
   // Cart state
   const [cart, setCart] = useState([]);
   const [discount, setDiscount] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState('tunai');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
   const [cashReceived, setCashReceived] = useState('');
   const [note, setNote] = useState('');
   
@@ -42,7 +42,7 @@ const Transaction = () => {
     try {
       setLoading(true);
       const [foodsRes, categoriesRes] = await Promise.all([
-        foodService.getAll({ status: 'tersedia' }),
+        foodService.getAll({ status: 'available' }),
         categoryService.getAll()
       ]);
 
@@ -55,7 +55,7 @@ const Transaction = () => {
       }
     } catch (error) {
       console.error('Error fetching data:', error);
-      toast.error('Gagal memuat data');
+      toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -71,7 +71,7 @@ const Transaction = () => {
   // Cart functions
   const addToCart = (food) => {
     if (food.stok <= 0) {
-      toast.error('Stok habis!');
+      toast.error('Out of stock!');
       return;
     }
 
@@ -79,7 +79,7 @@ const Transaction = () => {
     
     if (existingItem) {
       if (existingItem.quantity >= food.stok) {
-        toast.error('Stok tidak mencukupi!');
+        toast.error('Insufficient stock!');
         return;
       }
       setCart(cart.map(item =>
@@ -91,7 +91,7 @@ const Transaction = () => {
       setCart([...cart, { ...food, quantity: 1 }]);
     }
     
-    toast.success(`${food.nama_makanan} ditambahkan ke keranjang`);
+    toast.success(`${food.nama_makanan} added to cart`);
   };
 
   const updateQuantity = (foodId, change) => {
@@ -102,7 +102,7 @@ const Transaction = () => {
         const newQty = item.quantity + change;
         if (newQty < 1) return item;
         if (newQty > food.stok) {
-          toast.error('Stok tidak mencukupi!');
+          toast.error('Insufficient stock!');
           return item;
         }
         return { ...item, quantity: newQty };
@@ -133,12 +133,12 @@ const Transaction = () => {
   // Process transaction
   const handleCheckout = async () => {
     if (cart.length === 0) {
-      toast.error('Keranjang masih kosong!');
+      toast.error('Cart is empty!');
       return;
     }
 
-    if (paymentMethod === 'tunai' && (!cashReceived || parseInt(cashReceived) < total)) {
-      toast.error('Uang yang diterima kurang!');
+    if (paymentMethod === 'cash' && (!cashReceived || parseInt(cashReceived) < total)) {
+      toast.error('Insufficient cash received!');
       return;
     }
 
@@ -152,8 +152,8 @@ const Transaction = () => {
         pajak: tax,
         diskon: discountAmount,
         total_bayar: total,
-        uang_diterima: paymentMethod === 'tunai' ? parseInt(cashReceived) : total,
-        uang_kembalian: paymentMethod === 'tunai' ? change : 0,
+        uang_diterima: paymentMethod === 'cash' ? parseInt(cashReceived) : total,
+        uang_kembalian: paymentMethod === 'cash' ? change : 0,
         metode_pembayaran: paymentMethod,
         catatan: note,
         items: cart.map(item => ({
@@ -174,11 +174,11 @@ const Transaction = () => {
         clearCart();
         fetchData(); // Refresh stock
       } else {
-        toast.error(response.message || 'Gagal memproses transaksi');
+        toast.error(response.message || 'Failed to process transaction');
       }
     } catch (error) {
       console.error('Error processing transaction:', error);
-      toast.error('Gagal memproses transaksi');
+      toast.error('Failed to process transaction');
     } finally {
       setProcessing(false);
     }
@@ -192,7 +192,7 @@ const Transaction = () => {
   const DEFAULT_CATEGORY_ICON = '🍔';
 
   if (loading) {
-    return <LoadingSpinner size="lg" message="Memuat menu..." />;
+    return <LoadingSpinner size="lg" message="Loading menu..." />;
   }
 
   return (
@@ -204,7 +204,7 @@ const Transaction = () => {
             <input
               type="text"
               className="form-input"
-              placeholder="Cari menu..."
+              placeholder="Search menu..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -216,7 +216,7 @@ const Transaction = () => {
               className={`category-btn ${selectedCategory === 'all' ? 'active' : ''}`}
               onClick={() => setSelectedCategory('all')}
             >
-              Semua
+              All
             </button>
             {categories.map((cat) => (
               <button
@@ -257,7 +257,7 @@ const Transaction = () => {
                   <h4 className="menu-item-name">{food.nama_makanan}</h4>
                   <p className="menu-item-price">{formatCurrency(food.harga)}</p>
                   <p className="menu-item-stock">
-                    {food.stok > 0 ? `Stok: ${food.stok}` : 'Stok Habis'}
+                    {food.stok > 0 ? `Stock: ${food.stok}` : 'Out of Stock'}
                   </p>
                 </div>
               </div>
@@ -270,7 +270,7 @@ const Transaction = () => {
               color: 'var(--gray-400)'
             }}>
               <IoFastFoodOutline style={{ fontSize: '3rem', marginBottom: '1rem' }} />
-              <p>Menu tidak ditemukan</p>
+              <p>Menu not found</p>
             </div>
           )}
         </div>
@@ -281,7 +281,7 @@ const Transaction = () => {
         <div className="cart-header">
           <h3>
             <HiOutlineShoppingCart />
-            Keranjang
+            Cart
             {totalItems > 0 && <span className="cart-count">{totalItems}</span>}
           </h3>
           {cart.length > 0 && (
@@ -290,7 +290,7 @@ const Transaction = () => {
               onClick={clearCart}
               style={{ color: 'var(--danger-500)' }}
             >
-              Hapus Semua
+              Clear All
             </button>
           )}
         </div>
@@ -352,8 +352,8 @@ const Transaction = () => {
           ) : (
             <div className="cart-empty">
               <HiOutlineShoppingCart />
-              <p>Keranjang masih kosong</p>
-              <p style={{ fontSize: '0.8125rem' }}>Klik menu untuk menambahkan</p>
+              <p>Cart is empty</p>
+              <p style={{ fontSize: '0.8125rem' }}>Click a menu to add</p>
             </div>
           )}
         </div>
@@ -366,7 +366,7 @@ const Transaction = () => {
                 <span>{formatCurrency(subtotal)}</span>
               </div>
               <div className="summary-row discount">
-                <span>Diskon (%)</span>
+                <span>Discount (%)</span>
                 <input
                   type="number"
                   value={discount}
@@ -377,12 +377,12 @@ const Transaction = () => {
               </div>
               {discount > 0 && (
                 <div className="summary-row" style={{ color: 'var(--danger-500)' }}>
-                  <span>Potongan</span>
+                  <span>Discount Amount</span>
                   <span>-{formatCurrency(discountAmount)}</span>
                 </div>
               )}
               <div className="summary-row">
-                <span>Pajak (10%)</span>
+                <span>Tax (10%)</span>
                 <span>{formatCurrency(tax)}</span>
               </div>
               <div className="summary-row total">
@@ -393,23 +393,28 @@ const Transaction = () => {
 
             <div className="cart-actions">
               <div className="payment-methods">
-                {['tunai', 'debit', 'kredit', 'qris'].map((method) => (
+                {[
+                  { key: 'cash', label: 'Cash' },
+                  { key: 'debit', label: 'Debit' },
+                  { key: 'credit', label: 'Credit' },
+                  { key: 'qris', label: 'QRIS' }
+                ].map((method) => (
                   <button
-                    key={method}
-                    className={`payment-method ${paymentMethod === method ? 'active' : ''}`}
-                    onClick={() => setPaymentMethod(method)}
+                    key={method.key}
+                    className={`payment-method ${paymentMethod === method.key ? 'active' : ''}`}
+                    onClick={() => setPaymentMethod(method.key)}
                   >
-                    {method.charAt(0).toUpperCase() + method.slice(1)}
+                    {method.label}
                   </button>
                 ))}
               </div>
 
-              {paymentMethod === 'tunai' && (
+              {paymentMethod === 'cash' && (
                 <div className="form-group" style={{ marginBottom: '0.75rem' }}>
                   <input
                     type="number"
                     className="form-input"
-                    placeholder="Uang diterima"
+                    placeholder="Cash received"
                     value={cashReceived}
                     onChange={(e) => setCashReceived(e.target.value)}
                   />
@@ -420,7 +425,7 @@ const Transaction = () => {
                       color: 'var(--success-600)',
                       fontWeight: '600'
                     }}>
-                      Kembalian: {formatCurrency(change)}
+                      Change: {formatCurrency(change)}
                     </p>
                   )}
                 </div>
@@ -432,10 +437,10 @@ const Transaction = () => {
                 onClick={handleCheckout}
                 disabled={processing || cart.length === 0}
               >
-                {processing ? 'Memproses...' : (
+                {processing ? 'Processing...' : (
                   <>
                     <HiOutlineCheck />
-                    Bayar {formatCurrency(total)}
+                    Pay {formatCurrency(total)}
                   </>
                 )}
               </button>
@@ -448,7 +453,7 @@ const Transaction = () => {
       <Modal
         isOpen={successModal}
         onClose={() => setSuccessModal(false)}
-        title="Transaksi Berhasil"
+        title="Transaction Successful"
       >
         <div style={{ textAlign: 'center' }}>
           <div style={{
@@ -466,9 +471,9 @@ const Transaction = () => {
             <HiOutlineCheck />
           </div>
           
-          <h3 style={{ marginBottom: '0.5rem' }}>Pembayaran Berhasil!</h3>
+          <h3 style={{ marginBottom: '0.5rem' }}>Payment Successful!</h3>
           <p style={{ color: 'var(--gray-500)', marginBottom: '1.5rem' }}>
-            Transaksi telah selesai diproses
+            Transaction has been processed
           </p>
 
           {lastTransaction && (
@@ -480,15 +485,15 @@ const Transaction = () => {
               marginBottom: '1.5rem'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <span style={{ color: 'var(--gray-500)' }}>Kode Transaksi</span>
+                <span style={{ color: 'var(--gray-500)' }}>Transaction Code</span>
                 <strong>{lastTransaction.kode_transaksi}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <span style={{ color: 'var(--gray-500)' }}>Total Pembayaran</span>
+                <span style={{ color: 'var(--gray-500)' }}>Total Payment</span>
                 <strong>{formatCurrency(lastTransaction.total_bayar)}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--gray-500)' }}>Metode</span>
+                <span style={{ color: 'var(--gray-500)' }}>Method</span>
                 <strong style={{ textTransform: 'capitalize' }}>{lastTransaction.metode_pembayaran}</strong>
               </div>
             </div>
@@ -499,7 +504,7 @@ const Transaction = () => {
             onClick={() => setSuccessModal(false)}
             style={{ width: '100%' }}
           >
-            Transaksi Baru
+            New Transaction
           </button>
         </div>
       </Modal>

@@ -69,40 +69,40 @@ const Dashboard = () => {
             
             if (trxRes && trxRes.success) {
               const trxList = trxRes.data?.data || trxRes.data || [];
-              console.log('📊 Fallback grafik - transaksi 7 hari:', trxList.length);
+              console.log('📊 Fallback chart - last 7 days transactions:', trxList.length);
               
-              const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-              const dayMap = {};
-              
-              // Initialize 7 days
-              for (let i = 0; i < 7; i++) {
-                const d = new Date(start);
-                d.setDate(start.getDate() + i);
-                const dateKey = toISO(d);
-                dayMap[dateKey] = { name: dayNames[d.getDay()], pendapatan: 0, transaksi: 0 };
-              }
-              
-              // Aggregate transactions by date
-              trxList.forEach(t => {
-                const date = (new Date(t.tanggal_transaksi)).toISOString().split('T')[0];
-                if (dayMap[date]) {
-                  dayMap[date].pendapatan += Number(t.total_bayar || 0);
-                  dayMap[date].transaksi += 1;
-                }
-              });
-              
-              const chart = Object.values(dayMap);
-              console.log('📊 Data grafik fallback:', chart);
-              setChartData(chart);
-            } else {
-              console.log('⚠️ Gagal fetch transaksi untuk grafik');
-              setChartData([]);
-            }
-          } catch (err) {
-            console.error('❌ Error fallback grafik:', err);
-            setChartData([]);
-          }
-        }
+               const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+               const dayMap = {};
+               
+               // Initialize 7 days
+               for (let i = 0; i < 7; i++) {
+                 const d = new Date(start);
+                 d.setDate(start.getDate() + i);
+                 const dateKey = toISO(d);
+                 dayMap[dateKey] = { name: dayNames[d.getDay()], pendapatan: 0, transaksi: 0 };
+               }
+               
+               // Aggregate transactions by date
+               trxList.forEach(t => {
+                 const date = (new Date(t.tanggal_transaksi)).toISOString().split('T')[0];
+                 if (dayMap[date]) {
+                   dayMap[date].pendapatan += Number(t.total_bayar || 0);
+                   dayMap[date].transaksi += 1;
+                 }
+               });
+               
+               const chart = Object.values(dayMap);
+              console.log('📊 Fallback chart data:', chart);
+               setChartData(chart);
+             } else {
+              console.log('⚠️ Failed to fetch transactions for chart');
+               setChartData([]);
+             }
+           } catch (err) {
+            console.error('❌ Fallback chart error:', err);
+             setChartData([]);
+           }
+         }
 
       // If total_makanan not provided, fetch count from foods
       if (!resolvedSummary.total_makanan || resolvedSummary.total_makanan === 0) {
@@ -141,21 +141,21 @@ const Dashboard = () => {
 
   const stats = [
     {
-      title: 'Pendapatan Hari Ini',
+      title: "Today's Revenue",
       value: formatCurrency(summary.total_pendapatan_hari_ini || 0),
       icon: HiOutlineCurrencyDollar,
       iconClass: 'primary',
       changeType: 'neutral'
     },
     {
-      title: 'Total Transaksi',
+      title: 'Total Transactions',
       value: formatNumber(summary.total_transaksi_hari_ini || 0),
       icon: HiOutlineShoppingCart,
       iconClass: 'success',
       changeType: 'neutral'
     },
     {
-      title: 'Item Terjual',
+      title: 'Items Sold',
       value: formatNumber(summary.total_item_terjual_hari_ini || 0),
       icon: HiOutlineClipboardList,
       iconClass: 'warning',
@@ -178,7 +178,7 @@ const Dashboard = () => {
   };
 
   if (loading) {
-    return <LoadingSpinner size="lg" message="Memuat data dashboard..." />;
+    return <LoadingSpinner size="lg" message="Loading dashboard data..." />;
   }
 
   return (
@@ -207,7 +207,7 @@ const Dashboard = () => {
         {/* Sales Chart */}
         <div className="chart-card">
           <div className="chart-header">
-            <h3>Grafik Pendapatan Mingguan</h3>
+            <h3>Weekly Revenue Chart</h3>
           </div>
           <div className="chart-body">
             <ResponsiveContainer width="100%" height={300}>
@@ -223,7 +223,7 @@ const Dashboard = () => {
                 <YAxis 
                   stroke="#9ca3af" 
                   fontSize={12}
-                  tickFormatter={(value) => `${(value / 1000000).toFixed(1)}jt`}
+                  tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
                 />
                 <Tooltip 
                   formatter={(value) => formatCurrency(value)}
@@ -237,6 +237,7 @@ const Dashboard = () => {
                 <Area 
                   type="monotone" 
                   dataKey="pendapatan" 
+                  name="Revenue"
                   stroke="#6366f1" 
                   strokeWidth={2}
                   fillOpacity={1} 
@@ -250,7 +251,7 @@ const Dashboard = () => {
         {/* Top Foods */}
         <div className="chart-card">
           <div className="chart-header">
-            <h3>Menu Terlaris</h3>
+            <h3>Best Selling Menu</h3>
           </div>
           <div className="chart-body">
             <div className="top-foods-list">
@@ -265,13 +266,13 @@ const Dashboard = () => {
                       <span>{food.nama_kategori || 'Uncategorized'}</span>
                     </div>
                     <div className="top-food-sales">
-                      {formatNumber(food.jumlah_terjual || 0)} terjual
+                      {formatNumber(food.jumlah_terjual || 0)} sold
                     </div>
                   </div>
                 ))
               ) : (
                 <p style={{ textAlign: 'center', color: 'var(--gray-400)', padding: '2rem' }}>
-                  Belum ada data penjualan
+                  No sales data yet
                 </p>
               )}
             </div>
@@ -282,7 +283,7 @@ const Dashboard = () => {
       {/* Recent Transactions */}
       <div className="chart-card">
         <div className="chart-header">
-          <h3>Transaksi Terakhir</h3>
+          <h3>Recent Transactions</h3>
         </div>
         <div className="card-body">
           {recentTransactions.length > 0 ? (
@@ -290,11 +291,11 @@ const Dashboard = () => {
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Kode Transaksi</th>
-                    <th>Tanggal</th>
-                    <th>Total Item</th>
-                    <th>Total Bayar</th>
-                    <th>Pembayaran</th>
+                    <th>Transaction Code</th>
+                    <th>Date</th>
+                    <th>Total Items</th>
+                    <th>Total Payment</th>
+                    <th>Payment Method</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -304,8 +305,8 @@ const Dashboard = () => {
                       <td>
                         <strong>{trx.kode_transaksi}</strong>
                       </td>
-                      <td>{new Date(trx.tanggal_transaksi).toLocaleDateString('id-ID')}</td>
-                      <td>{trx.total_item} item</td>
+                      <td>{new Date(trx.tanggal_transaksi).toLocaleDateString('en-US')}</td>
+                      <td>{trx.total_item} items</td>
                       <td>{formatCurrency(trx.total_bayar)}</td>
                       <td>
                         <span className="badge badge-info" style={{ textTransform: 'capitalize' }}>
@@ -313,7 +314,7 @@ const Dashboard = () => {
                         </span>
                       </td>
                       <td>
-                        <span className={`badge ${trx.status === 'selesai' ? 'badge-success' : 'badge-warning'}`}>
+                        <span className={`badge ${trx.status === 'completed' ? 'badge-success' : 'badge-warning'}`}>
                           {trx.status}
                         </span>
                       </td>
@@ -324,7 +325,7 @@ const Dashboard = () => {
             </div>
           ) : (
             <p style={{ textAlign: 'center', color: 'var(--gray-400)', padding: '2rem' }}>
-              Belum ada transaksi hari ini
+              No transactions today
             </p>
           )}
         </div>

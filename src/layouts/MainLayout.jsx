@@ -18,9 +18,9 @@ const MainLayout = () => {
 
   const navigation = [
     { name: 'Dashboard', path: '/dashboard', icon: HiOutlineViewGrid },
-    { name: 'Transaksi', path: '/transaction', icon: HiOutlineShoppingCart },
-    { name: 'Data Makanan', path: '/foods', icon: IoFastFoodOutline },
-    { name: 'Kategori', path: '/categories', icon: HiOutlineCollection },
+    { name: 'Transaction', path: '/transaction', icon: HiOutlineShoppingCart },
+    { name: 'Foods', path: '/foods', icon: IoFastFoodOutline },
+    { name: 'Categories', path: '/categories', icon: HiOutlineCollection },
     { name: 'History', path: '/history', icon: HiOutlineClock },
   ];
 
@@ -28,17 +28,17 @@ const MainLayout = () => {
     const path = location.pathname;
     switch (path) {
       case '/dashboard':
-        return { title: 'Dashboard', subtitle: 'Ringkasan bisnis Anda hari ini' };
+        return { title: 'Dashboard', subtitle: 'Your business summary for today' };
       case '/transaction':
-        return { title: 'Transaksi Baru', subtitle: 'Buat transaksi penjualan' };
+        return { title: 'New Transaction', subtitle: 'Create a sales transaction' };
       case '/foods':
-        return { title: 'Data Makanan', subtitle: 'Kelola menu makanan dan minuman' };
+        return { title: 'Food Data', subtitle: 'Manage food and beverage menu' };
       case '/categories':
-        return { title: 'Kategori', subtitle: 'Kelola kategori menu' };
+        return { title: 'Categories', subtitle: 'Manage menu categories' };
       case '/history':
-        return { title: 'History Transaksi', subtitle: 'Riwayat semua transaksi' };
+        return { title: 'Transaction History', subtitle: 'History of all transactions' };
       default:
-        return { title: 'FoodPOS', subtitle: 'Sistem POS Modern' };
+        return { title: 'FoodPOS', subtitle: 'Modern POS System' };
     }
   };
 
@@ -61,7 +61,7 @@ const MainLayout = () => {
           <div className="sidebar-logo">🍔</div>
           <div className="sidebar-brand">
             <h1>FoodPOS</h1>
-            <span>Sistem Kasir Makanan</span>
+            <span>Food Cashier System</span>
           </div>
         </div>
 

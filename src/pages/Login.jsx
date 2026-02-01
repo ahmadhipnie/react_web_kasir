@@ -19,12 +19,12 @@ const Login = () => {
     setError('');
 
     if (!username.trim()) {
-      setError('Username harus diisi');
+      setError('Username is required');
       return;
     }
 
     if (!password) {
-      setError('Password harus diisi');
+      setError('Password is required');
       return;
     }
 
@@ -35,15 +35,15 @@ const Login = () => {
     if (result.success) {
       navigate('/dashboard');
     } else {
-      setError(result.message || 'Login gagal');
+      setError(result.message || 'Login failed');
     }
   };
 
   const features = [
-    { icon: IoFastFoodOutline, text: 'Kelola menu makanan dengan mudah' },
-    { icon: IoReceiptOutline, text: 'Transaksi cepat dan akurat' },
-    { icon: IoStatsChartOutline, text: 'Laporan penjualan real-time' },
-    { icon: IoTimeOutline, text: 'Riwayat transaksi lengkap' },
+    { icon: IoFastFoodOutline, text: 'Easily manage food menu' },
+    { icon: IoReceiptOutline, text: 'Fast and accurate transactions' },
+    { icon: IoStatsChartOutline, text: 'Real-time sales reports' },
+    { icon: IoTimeOutline, text: 'Complete transaction history' },
   ];
 
   return (
@@ -53,7 +53,7 @@ const Login = () => {
         <div className="login-brand">
           <div className="logo">🍔</div>
           <h1>FoodPOS</h1>
-          <p>Sistem Point of Sale Modern untuk Bisnis Kuliner Anda</p>
+          <p>Modern Point of Sale System for Your Culinary Business</p>
         </div>
 
         <div className="login-features">
@@ -71,8 +71,8 @@ const Login = () => {
       {/* Right Side - Login Form */}
       <div className="login-right">
         <div className="login-form-container">
-          <h2>Selamat Datang! 👋</h2>
-          <p>Silakan masuk untuk melanjutkan ke dashboard</p>
+          <h2>Welcome! 👋</h2>
+          <p>Please login to continue to dashboard</p>
 
           <form className="login-form" onSubmit={handleSubmit}>
             {error && (
@@ -95,7 +95,7 @@ const Login = () => {
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="Masukkan username"
+                  placeholder="Enter username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   autoComplete="username"
@@ -110,7 +110,7 @@ const Login = () => {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   className="form-input"
-                  placeholder="Masukkan password"
+                  placeholder="Enter password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
@@ -142,7 +142,7 @@ const Login = () => {
               style={{ width: '100%', marginTop: '0.5rem' }}
               disabled={loading}
             >
-              {loading ? 'Memproses...' : 'Masuk'}
+              {loading ? 'Processing...' : 'Login'}
             </button>
           </form>
 
