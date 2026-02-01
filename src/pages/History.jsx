@@ -61,7 +61,7 @@ const History = () => {
       }
     } catch (error) {
       console.error('Error fetching transactions:', error);
-      toast.error('Gagal memuat data transaksi');
+      toast.error('Failed to load transaction data');
     } finally {
       setLoading(false);
     }
@@ -89,28 +89,28 @@ const History = () => {
 
   const exportToExcel = () => {
     if (transactions.length === 0) {
-      toast.error('Tidak ada data untuk diexport');
+      toast.error('No data to export');
       return;
     }
 
     try {
       const exportData = transactions.map((trx, index) => ({
         'No': index + 1,
-        'Kode Transaksi': trx.kode_transaksi,
-        'Tanggal': formatDateTime(trx.tanggal_transaksi),
-        'Kasir': trx.kasir || trx.user?.nama_lengkap || '-',
-        'Total Item': trx.total_item,
+        'Transaction Code': trx.kode_transaksi,
+        'Date': formatDateTime(trx.tanggal_transaksi),
+        'Cashier': trx.kasir || trx.user?.nama_lengkap || '-',
+        'Total Items': trx.total_item,
         'Subtotal': trx.subtotal,
-        'Pajak': trx.pajak,
-        'Diskon': trx.diskon,
-        'Total Bayar': trx.total_bayar,
-        'Metode Pembayaran': trx.metode_pembayaran,
+        'Tax': trx.pajak,
+        'Discount': trx.diskon,
+        'Total Payment': trx.total_bayar,
+        'Payment Method': trx.metode_pembayaran,
         'Status': trx.status
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Transaksi');
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Transactions');
 
       // Style column widths
       worksheet['!cols'] = [
@@ -130,20 +130,20 @@ const History = () => {
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       
-      const fileName = `transaksi_${startDate}_${endDate}.xlsx`;
+      const fileName = `transactions_${startDate}_${endDate}.xlsx`;
       saveAs(data, fileName);
       
-      toast.success('Data berhasil diexport!');
+      toast.success('Data exported successfully!');
     } catch (error) {
       console.error('Error exporting:', error);
-      toast.error('Gagal mengexport data');
+      toast.error('Failed to export data');
     }
   };
 
   const getStatusBadge = (status) => {
     const statusMap = {
-      'selesai': { class: 'badge-success', label: 'Selesai' },
-      'dibatalkan': { class: 'badge-danger', label: 'Dibatalkan' },
+      'completed': { class: 'badge-success', label: 'Completed' },
+      'cancelled': { class: 'badge-danger', label: 'Cancelled' },
       'pending': { class: 'badge-warning', label: 'Pending' }
     };
     const statusInfo = statusMap[status] || { class: 'badge-info', label: status };
@@ -158,7 +158,7 @@ const History = () => {
           <input
             type="text"
             className="form-input"
-            placeholder="Cari kode transaksi..."
+            placeholder="Search transaction code..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -170,7 +170,7 @@ const History = () => {
 
         <div className="date-filter">
           <HiOutlineCalendar />
-          <label>Dari:</label>
+          <label>From:</label>
           <input
             type="date"
             value={startDate}
@@ -182,7 +182,7 @@ const History = () => {
         </div>
 
         <div className="date-filter">
-          <label>Sampai:</label>
+          <label>To:</label>
           <input
             type="date"
             value={endDate}
@@ -215,21 +215,21 @@ const History = () => {
 
       {/* Transactions Table */}
       {loading ? (
-        <LoadingSpinner message="Memuat data transaksi..." />
+        <LoadingSpinner message="Loading transaction data..." />
       ) : transactions.length > 0 ? (
         <div className="history-table">
           <div className="table-container">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Kode Transaksi</th>
-                  <th>Tanggal</th>
-                  <th>Kasir</th>
-                  <th>Total Item</th>
-                  <th>Total Bayar</th>
-                  <th>Pembayaran</th>
+                  <th>Transaction Code</th>
+                  <th>Date</th>
+                  <th>Cashier</th>
+                  <th>Total Items</th>
+                  <th>Total Payment</th>
+                  <th>Payment Method</th>
                   <th>Status</th>
-                  <th>Aksi</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -240,7 +240,7 @@ const History = () => {
                     </td>
                     <td>{formatDateTime(trx.tanggal_transaksi)}</td>
                     <td>{trx.kasir || trx.user?.nama_lengkap || '-'}</td>
-                    <td>{trx.total_item} item</td>
+                    <td>{trx.total_item} items</td>
                     <td>
                       <strong>{formatCurrency(trx.total_bayar)}</strong>
                     </td>
@@ -254,7 +254,7 @@ const History = () => {
                       <button 
                         className="btn btn-icon btn-secondary sm"
                         onClick={() => viewTransactionDetail(trx)}
-                        title="Lihat Detail"
+                        title="View Detail"
                       >
                         <HiOutlineEye />
                       </button>
@@ -279,8 +279,8 @@ const History = () => {
         <div className="history-table">
           <EmptyState
             icon={IoReceiptOutline}
-            title="Belum ada transaksi"
-            description="Transaksi akan muncul di sini setelah ada penjualan"
+            title="No transactions yet"
+            description="Transactions will appear here after a sale is made"
           />
         </div>
       )}
@@ -292,34 +292,34 @@ const History = () => {
           setIsDetailOpen(false);
           setSelectedTransaction(null);
         }}
-        title="Detail Transaksi"
+        title="Transaction Detail"
         size="lg"
       >
         {loadingDetail ? (
-          <LoadingSpinner message="Memuat detail..." />
+          <LoadingSpinner message="Loading detail..." />
         ) : selectedTransaction ? (
           <div className="transaction-detail-modal">
             <div className="transaction-info">
               <div className="transaction-info-item">
-                <label>Kode Transaksi</label>
+                <label>Transaction Code</label>
                 <span>{selectedTransaction.kode_transaksi}</span>
               </div>
               <div className="transaction-info-item">
-                <label>Tanggal</label>
+                <label>Date</label>
                 <span>{formatDateTime(selectedTransaction.tanggal_transaksi)}</span>
               </div>
               <div className="transaction-info-item">
-                <label>Kasir</label>
+                <label>Cashier</label>
                 <span>{selectedTransaction.kasir || selectedTransaction.user?.nama_lengkap || '-'}</span>
               </div>
               <div className="transaction-info-item">
-                <label>Metode Pembayaran</label>
+                <label>Payment Method</label>
                 <span style={{ textTransform: 'capitalize' }}>{selectedTransaction.metode_pembayaran}</span>
               </div>
             </div>
 
             <div className="transaction-items">
-              <h4>Item Pesanan</h4>
+              <h4>Order Items</h4>
               {selectedTransaction.details?.length > 0 ? (
                 selectedTransaction.details.map((item, index) => (
                   <div key={index} className="transaction-item">
@@ -336,7 +336,7 @@ const History = () => {
                 ))
               ) : (
                 <p style={{ color: 'var(--gray-400)', padding: '1rem 0' }}>
-                  Detail item tidak tersedia
+                  Item details not available
                 </p>
               )}
             </div>
@@ -348,26 +348,26 @@ const History = () => {
               </div>
               {selectedTransaction.diskon > 0 && (
                 <div className="transaction-total-row" style={{ color: 'var(--danger-500)' }}>
-                  <span>Diskon</span>
+                  <span>Discount</span>
                   <span>-{formatCurrency(selectedTransaction.diskon)}</span>
                 </div>
               )}
               <div className="transaction-total-row">
-                <span>Pajak</span>
+                <span>Tax</span>
                 <span>{formatCurrency(selectedTransaction.pajak && selectedTransaction.pajak > 0 ? selectedTransaction.pajak : Math.round((selectedTransaction.subtotal || 0) * 0.1))}</span>
               </div>
               <div className="transaction-total-row grand-total">
-                <span>Total Bayar</span>
+                <span>Total Payment</span>
                 <span>{formatCurrency(selectedTransaction.total_bayar)}</span>
               </div>
-              {selectedTransaction.metode_pembayaran === 'tunai' && (
+              {selectedTransaction.metode_pembayaran === 'cash' && (
                 <>
                   <div className="transaction-total-row">
-                    <span>Uang Diterima</span>
+                    <span>Cash Received</span>
                     <span>{formatCurrency(selectedTransaction.uang_diterima)}</span>
                   </div>
                   <div className="transaction-total-row">
-                    <span>Kembalian</span>
+                    <span>Change</span>
                     <span>{formatCurrency(selectedTransaction.uang_kembalian)}</span>
                   </div>
                 </>
@@ -376,7 +376,7 @@ const History = () => {
 
             {selectedTransaction.catatan && (
               <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--gray-50)', borderRadius: 'var(--radius-md)' }}>
-                <strong>Catatan:</strong>
+                <strong>Note:</strong>
                 <p style={{ marginTop: '0.25rem' }}>{selectedTransaction.catatan}</p>
               </div>
             )}

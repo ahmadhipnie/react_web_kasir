@@ -3,6 +3,9 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
+// Import middlewares
+const { translateResponse, translateQueryParams } = require('./middlewares/translator.middleware');
+
 // Import routes
 const authRoutes = require('./routes/auth.routes');
 const categoryRoutes = require('./routes/category.routes');
@@ -22,6 +25,12 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Translation middlewares
+// 1. Translate query params & body from English to Indonesian (for database queries)
+app.use(translateQueryParams);
+// 2. Translate responses from Indonesian to English (for frontend)
+app.use(translateResponse);
 
 // Static files for uploaded images
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

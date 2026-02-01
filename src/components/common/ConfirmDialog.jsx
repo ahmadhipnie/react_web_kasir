@@ -4,10 +4,10 @@ const ConfirmDialog = ({
   isOpen, 
   onClose, 
   onConfirm, 
-  title = 'Konfirmasi',
-  message = 'Apakah Anda yakin?',
-  confirmText = 'Ya, Lanjutkan',
-  cancelText = 'Batal',
+  title = 'Confirmation',
+  message = 'Are you sure?',
+  confirmText = 'Yes, Continue',
+  cancelText = 'Cancel',
   type = 'warning', // warning, danger, success
   loading = false
 }) => {
@@ -48,7 +48,7 @@ const ConfirmDialog = ({
                 onClick={onConfirm}
                 disabled={loading}
               >
-                {loading ? 'Memproses...' : confirmText}
+                {loading ? 'Processing...' : confirmText}
               </button>
             </div>
           </div>

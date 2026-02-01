@@ -31,16 +31,16 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('token', token);
         setUser(user);
-        toast.success(`Selamat datang, ${user.nama}!`);
+        toast.success(`Welcome, ${user.nama}!`);
         return { success: true };
       } else {
         console.log('❌ Login failed:', response.message);
-        toast.error(response.message || 'Login gagal');
+        toast.error(response.message || 'Login failed');
         return { success: false, message: response.message };
       }
     } catch (error) {
       console.error('🔥 Login error:', error);
-      const message = error.response?.data?.message || 'Terjadi kesalahan saat login';
+      const message = error.response?.data?.message || 'An error occurred during login';
       toast.error(message);
       return { success: false, message };
     }
@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('user');
       localStorage.removeItem('token');
       setUser(null);
-      toast.success('Berhasil logout');
+      toast.success('Logged out successfully');
     }
   };
 

@@ -4,7 +4,19 @@ const fs = require('fs');
 
 exports.getAll = async (req, res) => {
   try {
-    const { category_id, search, status } = req.query;
+    let { category_id, search, status } = req.query;
+    
+    // TRANSLATE STATUS FROM ENGLISH TO INDONESIAN
+    const statusTranslation = {
+      'available': 'tersedia',
+      'out_of_stock': 'habis',
+      'inactive': 'nonaktif'
+    };
+    
+    if (status && statusTranslation[status]) {
+      status = statusTranslation[status];
+    }
+    
     let query = `
       SELECT f.id, f.kode_makanan, f.nama_makanan, f.nama_makanan as nama, f.category_id, f.deskripsi, 
              f.harga, f.stok, f.gambar, f.status, f.created_at, f.updated_at,
@@ -261,6 +273,7 @@ exports.update = async (req, res) => {
 exports.delete = async (req, res) => {
   try {
     const { id } = req.params;
+    const { force } = req.query; // Check if force delete is requested
 
     const [existing] = await db.execute(
       'SELECT * FROM foods WHERE id = ?',
@@ -274,6 +287,47 @@ exports.delete = async (req, res) => {
       });
     }
 
+    // Check if food is used in transactions
+    const [transactionDetails] = await db.execute(
+      `SELECT COUNT(DISTINCT td.transaction_id) as transaction_count,
+              COUNT(td.id) as detail_count,
+              MIN(t.tanggal_transaksi) as first_transaction,
+              MAX(t.tanggal_transaksi) as last_transaction
+       FROM transaction_details td
+       JOIN transactions t ON td.transaction_id = t.id
+       WHERE td.food_id = ?`,
+      [id]
+    );
+
+    const hasTransactions = transactionDetails[0].transaction_count > 0;
+
+    if (hasTransactions && force !== 'true') {
+      // Return warning with transaction info
+      return res.status(409).json({
+        success: false,
+        requiresConfirmation: true,
+        message: 'Makanan ini sudah pernah digunakan dalam transaksi',
+        data: {
+          food_name: existing[0].nama_makanan,
+          transaction_count: transactionDetails[0].transaction_count,
+          detail_count: transactionDetails[0].detail_count,
+          first_transaction: transactionDetails[0].first_transaction,
+          last_transaction: transactionDetails[0].last_transaction,
+          warning: 'Deleting this item will delete all related transaction details. The main transaction data will remain, but without the item details.'
+        }
+      });
+    }
+
+    // If force = true or no transactions, proceed with deletion
+    if (hasTransactions) {
+      // Delete transaction details first
+      await db.execute(
+        'DELETE FROM transaction_details WHERE food_id = ?',
+        [id]
+      );
+      console.log(`⚠️  Deleted ${transactionDetails[0].detail_count} transaction details for food ID ${id}`);
+    }
+
     // Delete image if exists
     if (existing[0].gambar) {
       const imagePath = path.join(__dirname, '../../uploads', existing[0].gambar);
@@ -282,14 +336,27 @@ exports.delete = async (req, res) => {
       }
     }
 
+    // Delete the food
     await db.execute('DELETE FROM foods WHERE id = ?', [id]);
 
     res.json({
       success: true,
-      message: 'Makanan berhasil dihapus'
+      message: hasTransactions 
+        ? `Makanan berhasil dihapus beserta ${transactionDetails[0].detail_count} detail transaksi`
+        : 'Makanan berhasil dihapus'
     });
   } catch (error) {
     console.error('Delete food error:', error);
+    
+    // Handle foreign key constraint error (fallback)
+    if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+      return res.status(409).json({
+        success: false,
+        message: 'Tidak dapat menghapus makanan karena masih digunakan dalam transaksi',
+        error: 'FOREIGN_KEY_CONSTRAINT'
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: 'Terjadi kesalahan saat menghapus makanan'

@@ -53,7 +53,7 @@ const Categories = () => {
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
-      toast.error('Gagal memuat data kategori');
+      toast.error('Failed to load category data');
     } finally {
       setLoading(false);
     }
@@ -96,7 +96,7 @@ const Categories = () => {
     e.preventDefault();
     
     if (!formData.nama_kategori.trim()) {
-      toast.error('Nama kategori harus diisi');
+      toast.error('Category name is required');
       return;
     }
 
@@ -111,15 +111,15 @@ const Categories = () => {
       }
 
       if (response.success) {
-        toast.success(selectedCategory ? 'Kategori berhasil diupdate' : 'Kategori berhasil ditambahkan');
+        toast.success(selectedCategory ? 'Category updated successfully' : 'Category added successfully');
         setIsModalOpen(false);
         fetchCategories();
       } else {
-        toast.error(response.message || 'Terjadi kesalahan');
+        toast.error(response.message || 'An error occurred');
       }
     } catch (error) {
       console.error('Error saving category:', error);
-      toast.error(error.response?.data?.message || 'Gagal menyimpan data');
+      toast.error(error.response?.data?.message || 'Failed to save data');
     } finally {
       setFormLoading(false);
     }
@@ -131,15 +131,15 @@ const Categories = () => {
       const response = await categoryService.delete(selectedCategory.id);
       
       if (response.success) {
-        toast.success('Kategori berhasil dihapus');
+        toast.success('Category deleted successfully');
         setIsDeleteOpen(false);
         fetchCategories();
       } else {
-        toast.error(response.message || 'Gagal menghapus data');
+        toast.error(response.message || 'Failed to delete data');
       }
     } catch (error) {
       console.error('Error deleting category:', error);
-      toast.error('Gagal menghapus data');
+      toast.error('Failed to delete data');
     } finally {
       setFormLoading(false);
     }
@@ -154,7 +154,7 @@ const Categories = () => {
             <input
               type="text"
               className="form-input"
-              placeholder="Cari kategori..."
+              placeholder="Search category..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -164,13 +164,13 @@ const Categories = () => {
 
         <button className="btn btn-primary" onClick={openCreateModal}>
           <HiOutlinePlus />
-          Tambah Kategori
+          Add Category
         </button>
       </div>
 
       {/* Categories Grid */}
       {loading ? (
-        <LoadingSpinner message="Memuat data kategori..." />
+        <LoadingSpinner message="Loading category data..." />
       ) : filteredCategories.length > 0 ? (
         <div className="categories-grid">
           {filteredCategories.map((category) => (
@@ -181,9 +181,9 @@ const Categories = () => {
               
               <div className="category-info">
                 <h3>{category.nama_kategori}</h3>
-                <p>{category.deskripsi || 'Tidak ada deskripsi'}</p>
+                <p>{category.deskripsi || 'No description'}</p>
                 <span className="category-count">
-                  {category.food_count || 0} menu
+                  {category.food_count || 0} items
                 </span>
               </div>
 
@@ -198,7 +198,7 @@ const Categories = () => {
                 <button 
                   className="btn btn-icon btn-secondary sm"
                   onClick={() => openDeleteModal(category)}
-                  title="Hapus"
+                  title="Delete"
                   style={{ color: 'var(--danger-500)' }}
                 >
                   <HiOutlineTrash />
@@ -210,11 +210,11 @@ const Categories = () => {
       ) : (
         <EmptyState
           icon={IoGridOutline}
-          title="Belum ada kategori"
-          description="Tambahkan kategori pertama untuk mengorganisir menu Anda"
+          title="No categories yet"
+          description="Add your first category to organize your menu"
           action={
             <button className="btn btn-primary" onClick={openCreateModal}>
-              <HiOutlinePlus /> Tambah Kategori
+              <HiOutlinePlus /> Add Category
             </button>
           }
         />
@@ -224,30 +224,30 @@ const Categories = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={selectedCategory ? 'Edit Kategori' : 'Tambah Kategori Baru'}
+        title={selectedCategory ? 'Edit Category' : 'Add New Category'}
       >
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Nama Kategori *</label>
+            <label className="form-label">Category Name *</label>
             <input
               type="text"
               className="form-input"
               name="nama_kategori"
               value={formData.nama_kategori}
               onChange={handleInputChange}
-              placeholder="Masukkan nama kategori"
+              placeholder="Enter category name"
               required
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">Deskripsi</label>
+            <label className="form-label">Description</label>
             <textarea
               className="form-textarea"
               name="deskripsi"
               value={formData.deskripsi}
               onChange={handleInputChange}
-              placeholder="Masukkan deskripsi kategori"
+              placeholder="Enter category description"
               rows={3}
             />
           </div>
@@ -261,14 +261,14 @@ const Categories = () => {
               onClick={() => setIsModalOpen(false)}
               disabled={formLoading}
             >
-              Batal
+              Cancel
             </button>
             <button 
               type="submit" 
               className="btn btn-primary"
               disabled={formLoading}
             >
-              {formLoading ? 'Menyimpan...' : selectedCategory ? 'Update' : 'Simpan'}
+              {formLoading ? 'Saving...' : selectedCategory ? 'Update' : 'Save'}
             </button>
           </div>
         </form>
@@ -279,9 +279,9 @@ const Categories = () => {
         isOpen={isDeleteOpen}
         onClose={() => setIsDeleteOpen(false)}
         onConfirm={handleDelete}
-        title="Hapus Kategori"
-        message={`Apakah Anda yakin ingin menghapus kategori "${selectedCategory?.nama_kategori}"? Semua makanan dalam kategori ini akan menjadi tidak terkategori.`}
-        confirmText="Ya, Hapus"
+        title="Delete Category"
+        message={`Are you sure you want to delete category "${selectedCategory?.nama_kategori}"? All foods in this category will become uncategorized.`}
+        confirmText="Yes, Delete"
         type="danger"
         loading={formLoading}
       />
