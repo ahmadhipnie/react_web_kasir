@@ -31,6 +31,7 @@ const Foods = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedFood, setSelectedFood] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [deleteWarning, setDeleteWarning] = useState(null); // Store transaction impact info
 
   // Form state
   const [formData, setFormData] = useState({
@@ -40,7 +41,7 @@ const Foods = () => {
     harga: '',
     stok: '',
     gambar: null,
-    status: 'tersedia'
+    status: 'available'
   });
   const [previewImage, setPreviewImage] = useState(null);
 
@@ -90,7 +91,7 @@ const Foods = () => {
       }
     } catch (error) {
       console.error('Error fetching foods:', error);
-      toast.error('Gagal memuat data makanan');
+      toast.error('Failed to load food data');
     } finally {
       setLoading(false);
     }
@@ -120,7 +121,7 @@ const Foods = () => {
       harga: '',
       stok: '',
       gambar: null,
-      status: 'tersedia'
+      status: 'available'
     });
     setPreviewImage(null);
     setIsModalOpen(true);
@@ -141,7 +142,7 @@ const Foods = () => {
           harga: f.harga || '',
           stok: f.stok || '',
           gambar: null,
-          status: f.status || 'tersedia'
+          status: f.status || 'available'
         });
         setPreviewImage(f.gambar ? `http://localhost:8000/storage/${f.gambar}` : null);
         setIsModalOpen(true);
@@ -161,7 +162,7 @@ const Foods = () => {
       harga: food.harga || '',
       stok: food.stok || '',
       gambar: null,
-      status: food.status || 'tersedia'
+      status: food.status || 'available'
     });
     setPreviewImage(food.gambar ? `http://localhost:8000/storage/${food.gambar}` : null);
     setIsModalOpen(true);
@@ -169,6 +170,7 @@ const Foods = () => {
 
   const openDeleteModal = (food) => {
     setSelectedFood(food);
+    setDeleteWarning(null);
     setIsDeleteOpen(true);
   };
 
@@ -181,7 +183,7 @@ const Foods = () => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        toast.error('Ukuran gambar maksimal 2MB');
+        toast.error('Maximum image size is 2MB');
         return;
       }
       setFormData(prev => ({ ...prev, gambar: file }));
@@ -198,17 +200,17 @@ const Foods = () => {
     e.preventDefault();
     
     if (!formData.nama_makanan.trim()) {
-      toast.error('Nama makanan harus diisi');
+      toast.error('Food name is required');
       return;
     }
 
     if (!formData.category_id) {
-      toast.error('Kategori harus dipilih');
+      toast.error('Category must be selected');
       return;
     }
 
     if (!formData.harga || formData.harga <= 0) {
-      toast.error('Harga harus diisi dan lebih dari 0');
+      toast.error('Price must be filled and greater than 0');
       return;
     }
 
@@ -235,15 +237,15 @@ const Foods = () => {
       }
 
       if (response.success) {
-        toast.success(selectedFood ? 'Makanan berhasil diupdate' : 'Makanan berhasil ditambahkan');
+        toast.success(selectedFood ? 'Food updated successfully' : 'Food added successfully');
         setIsModalOpen(false);
         fetchFoods();
       } else {
-        toast.error(response.message || 'Terjadi kesalahan');
+        toast.error(response.message || 'An error occurred');
       }
     } catch (error) {
       console.error('Error saving food:', error);
-      toast.error(error.response?.data?.message || 'Gagal menyimpan data');
+      toast.error(error.response?.data?.message || 'Failed to save data');
     } finally {
       setFormLoading(false);
     }
@@ -252,18 +254,48 @@ const Foods = () => {
   const handleDelete = async () => {
     try {
       setFormLoading(true);
-      const response = await foodService.delete(selectedFood.id);
+      
+      // If no warning yet, check for impact first
+      if (!deleteWarning) {
+        try {
+          // Try to delete without force to check if it has transactions
+          const response = await foodService.delete(selectedFood.id, false);
+          
+          // If successful (no transactions), close and refresh
+          if (response.success) {
+            toast.success('Food deleted successfully');
+            setIsDeleteOpen(false);
+            setDeleteWarning(null);
+            fetchFoods();
+            return;
+          }
+        } catch (error) {
+          // Check if it's a confirmation requirement (409 status)
+          if (error.response?.status === 409 && error.response?.data?.requiresConfirmation) {
+            const warningData = error.response.data.data;
+            setDeleteWarning(warningData);
+            setFormLoading(false);
+            return; // Show warning, don't close dialog
+          }
+          // Other errors
+          throw error;
+        }
+      }
+      
+      // If we have warning, this is the force delete
+      const response = await foodService.delete(selectedFood.id, true);
       
       if (response.success) {
-        toast.success('Makanan berhasil dihapus');
+        toast.success(response.message || 'Food deleted successfully');
         setIsDeleteOpen(false);
+        setDeleteWarning(null);
         fetchFoods();
       } else {
-        toast.error(response.message || 'Gagal menghapus data');
+        toast.error(response.message || 'Failed to delete data');
       }
     } catch (error) {
       console.error('Error deleting food:', error);
-      toast.error('Gagal menghapus data');
+      toast.error(error.response?.data?.message || 'Failed to delete data');
     } finally {
       setFormLoading(false);
     }
@@ -283,7 +315,7 @@ const Foods = () => {
             <input
               type="text"
               className="form-input"
-              placeholder="Cari makanan..."
+              placeholder="Search food..."
               value={searchQuery}
               onChange={handleSearch}
             />
@@ -296,29 +328,29 @@ const Foods = () => {
             value={selectedCategory}
             onChange={(e) => handleCategoryFilter(e.target.value)}
           >
-            <option value="all">Semua Kategori</option>
+            <option value="all">All Categories</option>
             {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>{cat.nama_kategori}</option>
             ))}
           </select>
 
           <div className="status-filters">
-            <button className={`filter-tab ${selectedStatus === 'all' ? 'active' : ''}`} onClick={() => handleStatusFilter('all')}>Semua</button>
-            <button className={`filter-tab ${selectedStatus === 'tersedia' ? 'active' : ''}`} onClick={() => handleStatusFilter('tersedia')}>Tersedia</button>
-            <button className={`filter-tab ${selectedStatus === 'habis' ? 'active' : ''}`} onClick={() => handleStatusFilter('habis')}>Habis</button>
-            <button className={`filter-tab ${selectedStatus === 'nonaktif' ? 'active' : ''}`} onClick={() => handleStatusFilter('nonaktif')}>Nonaktif</button>
+            <button className={`filter-tab ${selectedStatus === 'all' ? 'active' : ''}`} onClick={() => handleStatusFilter('all')}>All</button>
+            <button className={`filter-tab ${selectedStatus === 'available' ? 'active' : ''}`} onClick={() => handleStatusFilter('available')}>Available</button>
+            <button className={`filter-tab ${selectedStatus === 'out_of_stock' ? 'active' : ''}`} onClick={() => handleStatusFilter('out_of_stock')}>Out of Stock</button>
+            <button className={`filter-tab ${selectedStatus === 'inactive' ? 'active' : ''}`} onClick={() => handleStatusFilter('inactive')}>Inactive</button>
           </div>
         </div>
 
         <button className="btn btn-primary" onClick={openCreateModal}>
           <HiOutlinePlus />
-          Tambah Makanan
+          Add Food
         </button>
       </div>
 
       {/* Foods Grid */}
       {loading ? (
-        <LoadingSpinner message="Memuat data makanan..." />
+        <LoadingSpinner message="Loading food data..." />
       ) : foods.length > 0 ? (
         <>
           <div className="foods-grid">
@@ -341,9 +373,9 @@ const Foods = () => {
                   <div className="food-card-status">
                     {(() => {
                       const map = {
-                        tersedia: { label: 'Tersedia', icon: <IoCheckmarkCircleOutline />, cls: 'badge-success' },
-                        habis: { label: 'Habis', icon: <IoAlertCircleOutline />, cls: 'badge-warning' },
-                        nonaktif: { label: 'Nonaktif', icon: <IoCloseCircleOutline />, cls: 'badge-danger' }
+                        available: { label: 'Available', icon: <IoCheckmarkCircleOutline />, cls: 'badge-success' },
+                        out_of_stock: { label: 'Out of Stock', icon: <IoAlertCircleOutline />, cls: 'badge-warning' },
+                        inactive: { label: 'Inactive', icon: <IoCloseCircleOutline />, cls: 'badge-danger' }
                       };
                       const s = map[food.status] || { label: (food.status || ''), icon: null, cls: '' };
                       return (
@@ -362,7 +394,7 @@ const Foods = () => {
                   </span>
                   <h3 className="food-card-name">{food.nama_makanan}</h3>
                   <p className="food-card-desc">
-                    {food.deskripsi || 'Tidak ada deskripsi'}
+                    {food.deskripsi || 'No description'}
                   </p>
                   
                   <div className="food-card-footer">
@@ -385,7 +417,7 @@ const Foods = () => {
                       <button 
                         className="btn btn-icon btn-ghost sm"
                         onClick={() => openDeleteModal(food)}
-                        title="Hapus"
+                        title="Delete"
                         style={{ color: 'var(--danger-500)' }}
                       >
                         <HiOutlineTrash />
@@ -408,11 +440,11 @@ const Foods = () => {
       ) : (
         <EmptyState
           icon={IoFastFoodOutline}
-          title="Belum ada makanan"
-          description="Tambahkan menu makanan pertama Anda"
+          title="No food items yet"
+          description="Add your first food menu item"
           action={
             <button className="btn btn-primary" onClick={openCreateModal}>
-              <HiOutlinePlus /> Tambah Makanan
+              <HiOutlinePlus /> Add Food
             </button>
           }
         />
@@ -422,27 +454,27 @@ const Foods = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={selectedFood ? 'Edit Makanan' : 'Tambah Makanan Baru'}
+        title={selectedFood ? 'Edit Food' : 'Add New Food'}
         size="lg"
       >
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
-              <label className="form-label">Nama Makanan *</label>
+              <label className="form-label">Food Name *</label>
               <input
                 type="text"
                 className="form-input"
                 name="nama_makanan"
                 value={formData.nama_makanan}
                 onChange={handleInputChange}
-                placeholder="Masukkan nama makanan"
+                placeholder="Enter food name"
                 required
               />
             </div>
 
             {selectedFood ? (
               <div className="form-group">
-                <label className="form-label">Kode Makanan</label>
+                <label className="form-label">Food Code</label>
                 <input
                   type="text"
                   className="form-input"
@@ -457,7 +489,7 @@ const Foods = () => {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
-              <label className="form-label">Kategori *</label>
+              <label className="form-label">Category *</label>
               <select
                 className="form-select"
                 name="category_id"
@@ -465,7 +497,7 @@ const Foods = () => {
                 onChange={handleInputChange}
                 required
               >
-                <option value="">Pilih Kategori</option>
+                <option value="">Select Category</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>{cat.nama_kategori}</option>
                 ))}
@@ -480,16 +512,16 @@ const Foods = () => {
                 value={formData.status}
                 onChange={handleInputChange}
               >
-                <option value="tersedia">Tersedia</option>
-                <option value="habis">Habis</option>
-                <option value="nonaktif">Nonaktif</option>
+                <option value="available">Available</option>
+                <option value="out_of_stock">Out of Stock</option>
+                <option value="inactive">Inactive</option>
               </select>
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
-              <label className="form-label">Harga *</label>
+              <label className="form-label">Price *</label>
               <input
                 type="number"
                 className="form-input"
@@ -503,7 +535,7 @@ const Foods = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Stok</label>
+              <label className="form-label">Stock</label>
               <input
                 type="number"
                 className="form-input"
@@ -517,19 +549,19 @@ const Foods = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Deskripsi</label>
+            <label className="form-label">Description</label>
             <textarea
               className="form-textarea"
               name="deskripsi"
               value={formData.deskripsi}
               onChange={handleInputChange}
-              placeholder="Masukkan deskripsi makanan"
+              placeholder="Enter food description"
               rows={3}
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">Gambar</label>
+            <label className="form-label">Image</label>
             {previewImage ? (
               <div className="image-preview">
                 <img src={previewImage} alt="Preview" />
@@ -549,7 +581,7 @@ const Foods = () => {
                   onChange={handleImageChange}
                 />
                 <HiOutlinePhotograph className="image-upload-icon" />
-                <p>Klik untuk upload gambar</p>
+                <p>Click to upload image</p>
                 <p style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>
                   PNG, JPG, JPEG (Max 2MB)
                 </p>
@@ -564,14 +596,14 @@ const Foods = () => {
               onClick={() => setIsModalOpen(false)}
               disabled={formLoading}
             >
-              Batal
+              Cancel
             </button>
             <button 
               type="submit" 
               className="btn btn-primary"
               disabled={formLoading}
             >
-              {formLoading ? 'Menyimpan...' : selectedFood ? 'Update' : 'Simpan'}
+              {formLoading ? 'Saving...' : selectedFood ? 'Update' : 'Save'}
             </button>
           </div>
         </form>
@@ -580,11 +612,50 @@ const Foods = () => {
       {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={isDeleteOpen}
-        onClose={() => setIsDeleteOpen(false)}
+        onClose={() => {
+          setIsDeleteOpen(false);
+          setDeleteWarning(null);
+        }}
         onConfirm={handleDelete}
-        title="Hapus Makanan"
-        message={`Apakah Anda yakin ingin menghapus "${selectedFood?.nama_makanan}"? Tindakan ini tidak dapat dibatalkan.`}
-        confirmText="Ya, Hapus"
+        title={deleteWarning ? "⚠️ Delete Food - Confirmation Required" : "Delete Food"}
+        message={
+          deleteWarning ? (
+            <div>
+              <p style={{ marginBottom: '1rem' }}>
+                <strong>"{selectedFood?.nama_makanan}"</strong> has been used in transactions:
+              </p>
+              <div style={{ 
+                background: 'var(--warning-50)', 
+                border: '1px solid var(--warning-200)',
+                borderRadius: 'var(--radius-md)',
+                padding: '1rem',
+                marginBottom: '1rem'
+              }}>
+                <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                  📊 <strong>{deleteWarning.transaction_count}</strong> transactions affected
+                </p>
+                <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                  📝 <strong>{deleteWarning.detail_count}</strong> transaction details will be deleted
+                </p>
+                <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                  📅 First used: {new Date(deleteWarning.first_transaction).toLocaleDateString()}
+                </p>
+                <p style={{ fontSize: '0.875rem' }}>
+                  📅 Last used: {new Date(deleteWarning.last_transaction).toLocaleDateString()}
+                </p>
+              </div>
+              <p style={{ color: 'var(--danger-600)', fontSize: '0.875rem', fontWeight: '600' }}>
+                {deleteWarning.warning}
+              </p>
+              <p style={{ marginTop: '1rem', fontSize: '0.875rem' }}>
+                Are you sure you want to continue?
+              </p>
+            </div>
+          ) : (
+            `Are you sure you want to delete "${selectedFood?.nama_makanan}"? This action cannot be undone.`
+          )
+        }
+        confirmText={deleteWarning ? "Yes, Delete Everything" : "Yes, Delete"}
         type="danger"
         loading={formLoading}
       />
