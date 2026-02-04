@@ -38,19 +38,29 @@ const History = () => {
       };
       
       if (searchQuery) params.search = searchQuery;
-      if (filterPayment !== 'all') params.payment_method = filterPayment;
+      if (filterPayment && filterPayment !== 'all') params.payment_method = filterPayment;
       if (startDate) params.start_date = startDate;
       if (endDate) params.end_date = endDate;
 
+      console.log('Fetching transactions with params:', params);
+
       const response = await transactionService.getAll(params);
+      
+      console.log('Transaction response:', response);
       
       if (response.success) {
         setTransactions(response.data || []);
         setTotalPages(response.pagination?.totalPages || 1);
+      } else {
+        console.error('Transaction fetch failed:', response);
+        setTransactions([]);
+        setTotalPages(1);
       }
     } catch (error) {
       console.error('Error fetching transactions:', error);
       toast.error('Failed to load transactions');
+      setTransactions([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -333,14 +343,14 @@ const History = () => {
               {totalPages > 1 && (
                 <Pagination
                   currentPage={currentPage}
-                  totalPages={totalPages}
+                  totalPages={totalPages || 1}
                   onPageChange={setCurrentPage}
                 />
               )}
             </>
           ) : (
             <EmptyState
-              icon={<HiOutlineCalendar />}
+              icon={HiOutlineCalendar}
               title="No Transactions"
               description="No transactions found matching your criteria"
             />

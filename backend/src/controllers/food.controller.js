@@ -168,6 +168,8 @@ exports.delete = async (req, res) => {
     const { id } = req.params;
     const { force } = req.query;
 
+    console.log(`Delete food request: id=${id}, force=${force}`);
+
     // Check if food exists
     const existing = await FoodModel.findById(id);
 
@@ -180,12 +182,19 @@ exports.delete = async (req, res) => {
 
     // Check if food is used in transactions
     const hasTransactions = await FoodModel.hasTransactions(id);
+    console.log(`Food ${id} hasTransactions: ${hasTransactions}`);
 
     if (hasTransactions && force !== 'true') {
+      // Get transaction count for warning message
+      const transactionCount = await FoodModel.getTransactionCount(id);
+      
       return res.status(409).json({
         success: false,
-        message: 'This food has been used in transactions. Are you sure you want to delete it?',
-        requiresConfirmation: true
+        message: 'This food has been used in transactions. Deleting it will also remove all related transaction details.',
+        requiresConfirmation: true,
+        data: {
+          transaction_count: transactionCount
+        }
       });
     }
 
@@ -197,17 +206,28 @@ exports.delete = async (req, res) => {
       }
     }
 
-    await FoodModel.delete(id);
+    let deleted;
+    if (hasTransactions && force === 'true') {
+      // Use cascade delete method
+      deleted = await FoodModel.deleteWithReferences(id);
+      console.log(`Food ${id} deleted with references: ${deleted}`);
+    } else {
+      // Normal delete (no references)
+      deleted = await FoodModel.delete(id);
+      console.log(`Food ${id} deleted: ${deleted}`);
+    }
 
     res.json({
       success: true,
-      message: 'Food deleted successfully'
+      message: hasTransactions 
+        ? 'Food and all related transaction details deleted successfully'
+        : 'Food deleted successfully'
     });
   } catch (error) {
     console.error('Delete food error:', error);
     res.status(500).json({
       success: false,
-      message: 'An error occurred while deleting food'
+      message: error.message || 'An error occurred while deleting food'
     });
   }
 };

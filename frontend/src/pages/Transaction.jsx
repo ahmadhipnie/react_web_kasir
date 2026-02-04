@@ -132,6 +132,8 @@ const Transaction = () => {
 
   // Process transaction
   const handleCheckout = async () => {
+    if (processing) return; // Prevent double submission
+    
     if (cart.length === 0) {
       toast.error('Cart is empty!');
       return;
@@ -142,8 +144,9 @@ const Transaction = () => {
       return;
     }
 
+    setProcessing(true); // Set immediately before any async operation
+
     try {
-      setProcessing(true);
 
       const transactionData = {
         user_id: user?.id,

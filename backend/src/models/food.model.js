@@ -129,8 +129,16 @@ class FoodModel {
    * @returns {Promise<boolean>}
    */
   static async delete(id) {
-    const [result] = await db.execute('DELETE FROM foods WHERE id = ?', [id]);
-    return result.affectedRows > 0;
+    try {
+      const [result] = await db.execute('DELETE FROM foods WHERE id = ?', [id]);
+      return result.affectedRows > 0;
+    } catch (error) {
+      // Handle foreign key constraint error
+      if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.errno === 1451) {
+        throw new Error('Cannot delete food: it is referenced in transaction details');
+      }
+      throw error;
+    }
   }
 
   /**
@@ -158,6 +166,52 @@ class FoodModel {
       [id]
     );
     return transactions.length > 0;
+  }
+
+  /**
+   * Get transaction count for a food
+   * @param {number} id 
+   * @returns {Promise<number>}
+   */
+  static async getTransactionCount(id) {
+    const [result] = await db.execute(
+      'SELECT COUNT(*) as count FROM transaction_details WHERE food_id = ?',
+      [id]
+    );
+    return result[0].count;
+  }
+
+  /**
+   * Delete food with all its references (cascade delete)
+   * @param {number} id 
+   * @returns {Promise<boolean>}
+   */
+  static async deleteWithReferences(id) {
+    const connection = await db.getConnection();
+    
+    try {
+      await connection.beginTransaction();
+      
+      // Delete from transaction_details first
+      await connection.execute(
+        'DELETE FROM transaction_details WHERE food_id = ?',
+        [id]
+      );
+      
+      // Delete the food
+      const [result] = await connection.execute(
+        'DELETE FROM foods WHERE id = ?',
+        [id]
+      );
+      
+      await connection.commit();
+      return result.affectedRows > 0;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   }
 
   /**

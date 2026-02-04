@@ -27,14 +27,14 @@ const ConfirmDialog = ({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal" style={{ maxWidth: '450px' }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-body">
           <div className="confirm-modal">
             <div className={`confirm-icon ${type}`}>
               {iconMap[type]}
             </div>
             <h3>{title}</h3>
-            <p>{message}</p>
+            <p style={{ whiteSpace: 'pre-line', textAlign: 'left' }}>{message}</p>
             <div className="confirm-actions">
               <button 
                 className="btn btn-secondary" 

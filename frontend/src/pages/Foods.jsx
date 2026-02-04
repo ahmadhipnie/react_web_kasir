@@ -599,13 +599,13 @@ const Foods = () => {
           setDeleteWarning(null);
         }}
         onConfirm={handleDelete}
-        title="Delete Food"
+        title={deleteWarning ? "⚠️ Warning: Cascade Delete" : "Delete Food"}
         message={
           deleteWarning 
-            ? `This food has been used in ${deleteWarning.transaction_count} transaction(s). Are you sure you want to delete it? This cannot be undone.`
+            ? `"${selectedFood?.food_name}" has been used in ${deleteWarning.transaction_count} transaction record(s).\n\nDeleting this food will also permanently delete all related transaction details. This action cannot be undone.\n\nAre you sure you want to proceed?`
             : `Are you sure you want to delete "${selectedFood?.food_name}"?`
         }
-        confirmText={deleteWarning ? "Yes, Delete Anyway" : "Yes, Delete"}
+        confirmText={deleteWarning ? "Delete Food & References" : "Yes, Delete"}
         type="danger"
         loading={formLoading}
       />

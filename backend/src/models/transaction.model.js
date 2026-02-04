@@ -12,6 +12,8 @@ class TransactionModel {
     const limitNum = parseInt(limit) || 10;
     const offset = (pageNum - 1) * limitNum;
 
+    console.log('TransactionModel.findAll filters:', filters);
+
     let whereClause = 'WHERE 1=1';
     const params = [];
 
@@ -34,6 +36,9 @@ class TransactionModel {
       whereClause += ' AND DATE(t.transaction_date) <= ?';
       params.push(end_date);
     }
+
+    console.log('Query whereClause:', whereClause);
+    console.log('Query params:', params);
 
     // Get total count
     const [countResult] = await db.execute(`
@@ -153,7 +158,7 @@ class TransactionModel {
 
       const transactionId = transactionResult.insertId;
 
-      // Insert transaction details and update stock
+      // Insert transaction details (stock update handled by database trigger)
       for (const item of items) {
         // Insert detail
         await connection.execute(`
@@ -164,12 +169,6 @@ class TransactionModel {
           transactionId, item.food_id, item.food_name, item.unit_price, 
           item.quantity, item.subtotal, item.notes || null
         ]);
-
-        // Update stock
-        await connection.execute(
-          'UPDATE foods SET stock = stock - ? WHERE id = ?',
-          [item.quantity, item.food_id]
-        );
       }
 
       await connection.commit();
